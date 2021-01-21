@@ -1,3 +1,7 @@
+# Don't save local pipelines in git
+*/pipelines/*
+pipelines/*
+
 # History files
 .Rhistory
 .Rapp.history
