@@ -11,53 +11,7 @@
 #                      precheck_only=FALSE, unused_props=FALSE, verbose=FALSE,
 #                      docker=FALSE, aws=FALSE, external_modules=NULL, blj=FALSE, env_var=NULL,
 #                      blj_proj=NULL)
-biolockj_api <- function(args)
-{
-    # initialize Java Virtual Machine (JVM)
-    rJava::.jinit()
-    
-    inputArray <- rJava::.jarray(args)
-    jarDir <- "/Users/ieclabau/git/BioLockJ/dist"
-    jarName <- 'BioLockJ.jar'
-    
-    # Add JAR file to class path
-    rJava::.jaddClassPath(file.path(jarDir, jarName))
-    
-    # Display class path
-    print(paste0('Class Path: ', rJava::.jclassPath()))
-    
-    # call biolockj
-    rJava::.jcall("biolockj/api/BioLockJ_API", returnSig = "V", "main", inputArray)
-    
-}
 
-listModules <- function(prefix=NULL, external.modules=NULL)
-{
-    querry = "listModules"
-    
-    # initialize Java Virtual Machine (JVM)
-    rJava::.jinit()
-    
-    args = c(querry)
-    if (!is.null(prefix)){
-        args = c( args, prefix)
-    }
-    inputArray <- rJava::.jarray(c("listModules", args))
-    jarDir <- "/Users/ieclabau/git/BioLockJ/dist"
-    jarName <- 'BioLockJ.jar'
-    
-    # Add JAR file to class path
-    rJava::.jaddClassPath(file.path(jarDir, jarName))
-    if ( !is.null(external.modules)){
-        rJava::.jaddClassPath(list.files(path = external.modules, pattern=".jar"))
-    }
-    
-    # Display class path
-    print(paste0('Class Path: ', rJava::.jclassPath()))
-    
-    # call biolockj
-    rJava::.jcall("biolockj/api/BioLockJ_API", returnSig = "List<String>", "listModules", inputArray)
-}
 
 .bljJar <- function(){
     return("/Users/ieclabau/git/BioLockJ/dist/BioLockJ.jar")
@@ -87,6 +41,26 @@ listModules <- function(prefix=NULL, external.modules=NULL)
     CMD = capture.output( cat("java -cp", JAR, CLASS, args) )
 }
 
+
+
+##### API
+
+# Options:
+#     
+# --external-modules <dir>
+#     path to a directory containing additional modules
+# --module <module_path>
+#     class path for a specific module
+# --property <property>
+#     a specific property
+# --value <value>
+#     a vlue to use for a specific property
+# --config <file>
+#     file path for a configuration file giving one or more property values
+# --verbose true
+# flag indicating that all messages should go to standard err, including some that are typically disabled.
+
+
 .callBioLockJApi <- function(args, external.modules=NULL){
     CLASS = "biolockj/api/BioLockJ_API"
     cp = .getClassPath( external.modules )
@@ -96,6 +70,7 @@ listModules <- function(prefix=NULL, external.modules=NULL)
 }
 
 last_pipeline <-function(){
+    # Returns the path to the most recent pipeline.
     args = "last-pipeline"
     if ( length( Sys.getenv("BLJ_PROJ") ) == 0 ){
         message("This method depends on the BLJ_PROJ variable.  Please set your pipline directory:")
@@ -104,43 +79,109 @@ last_pipeline <-function(){
     .callBioLockJApi(args)
 }
 
+
 listModules <- function(external.modules=NULL){
+    # Returns a list of classpaths to the classes that extend BioModule.
     args = c("listModules")
     .callBioLockJApi(args, external.modules=external.modules)
 }
 
-propType <- function(property, module=NULL, external.modules=NULL ){
-    
+listApiModules <- function(external.modules=NULL){
+    # Like listModules but limit list to modules that implement the ApiModule interface.
+    args = c("listApiModules")
+    .callBioLockJApi(args, external.modules=external.modules)
 }
 
-# 
-# propType <- function(property, module=NULL, external.modules=NULL )
-# {
-#     .initBioLockJ(external.modules)
-#         
-#     args = c("propType", "--property", property)
-#     if (!is.null(module)){
-#         args = c( args, "--module", module)
-#     }
-#     
-#     # call biolockj
-#     val = capture.output( rJava::.jcall("biolockj/api/BioLockJ_API", returnSig = "V", method = "main", rJava::.jarray(args) ), 
-#                           file=NULL )
-#    return(val)
-# }
-# 
-# .initBioLockJ <- function(external.modules=NULL){
-#     # initialize Java Virtual Machine (JVM)
-#     rJava::.jinit()
-#     jarDir <- "/Users/ieclabau/git/BioLockJ/dist"
-#     jarName <- 'BioLockJ.jar'
-#     
-#     # Add JAR file to class path
-#     rJava::.jaddClassPath(file.path(jarDir, jarName))
-#     if ( !is.null(external.modules)){
-#         rJava::.jaddClassPath(list.files(path = external.modules, pattern=".jar"))
-#     }
-#     
-#     # Display class path
-#     #print(paste0('Class Path: ', rJava::.jclassPath()))
-# }
+listProps <- function(module=NULL){
+    # Returns a list of properties.
+    # If no args, it returns the list of properties used by the BioLockJ backbone.
+    # If a modules is given, then it returns a list of all properties used by
+    # that module.
+    args = c("listApiModules")
+    if ( !is.null(module) ){
+        args = c(args, "--module", module)
+    }
+    .callBioLockJApi(args)
+}
+
+listAllProps <- function(external.modules=NULL){
+    # Returns a list of all properties, include all backbone properties and all module properties.
+    # Optionally supply the path to a directory containing additional modules to include their properties.
+    args = c("listAllProps")
+    .callBioLockJApi(args, external.modules=external.modules)
+}
+
+propType <- function(property, module=NULL, external.modules=NULL ){
+    # Returns the type expected for the property: String, list, integer, positive number, etc.
+    # If a module is supplied, then the modules propType method is used.
+    args = c("propType")
+    if ( !is.null(module) ){
+        args = c(args, "--module", module)
+    }
+    .callBioLockJApi(args, external.modules=external.modules)
+}
+
+describeProp <- function(property, module=NULL, external.modules=NULL ){
+    # Returns a description of the property.
+    # If a module is supplied, then the modules getDescription method is used.
+    args = c("describeProp")
+    if ( !is.null(module) ){
+        args = c(args, "--module", module)
+    }
+    .callBioLockJApi(args, external.modules=external.modules)
+}
+
+propValue <- function(property, config=NULL, module=NULL, external.modules=NULL ){
+    # Returns the value for that property given that config file (optional) or 
+    # no config file (ie the default value)
+    args = c("propValue")
+    if ( !is.null(config) ){
+        args = c(args, "--config", config)
+    }
+    if ( !is.null(module) ){
+        args = c(args, "--module", module)
+    }
+    .callBioLockJApi(args, external.modules=external.modules)
+}
+
+isValidProp <- function(property, value, module=NULL, external.modules=NULL ){
+    # T/F/NA. Returns true if the value (val) for the property (prop) is valid;
+    # false if prop is a property but val is not a valid value,
+    # and NA if prop is not a recognized property.
+    # IF a module is supplied, then additionally call the validateProp(key, value)
+    # for that module, or for EACH module if a comma-separated list is given.
+    args = c("isValidProp", "--property", property, "--value", value)
+    if ( !is.null(module) ){
+        args = c(args, "--module", module)
+    }
+    .callBioLockJApi(args, external.modules=external.modules)
+}
+
+propInfo <- function(){
+    # Returns a json formatted list of the general properties (listProps)
+    # with the type, descrption and default for each property
+    args=c("propInfo")
+    .callBioLockJApi(args)
+}
+
+moduleInfo <- function(external.modules=NULL){
+    # Returns a json formatted list of all modules and for each module that 
+    # implements the ApiModule interface, it lists the props used by the module,
+    # and for each prop the type, descrption and default.
+    args=c("moduleInfo")
+    .callBioLockJApi(args, external.modules=external.modules)
+}
+
+listMounts <- function(){
+    # Returns a list of directories that would need to be mounted in order for 
+    # the files listed in the config file to be available to a pipeline running in docker.
+    args=c("listMounts")
+    .callBioLockJApi(args)
+}
+
+listUploads <- function(){
+    # Returns a list of file and directories that would need to be uploaded in order for 
+    # the files listed in the config file to be available to a pipeline running in the cloud.
+    args=c("listUploads")
+    .callBioLockJApi(args)
+}
