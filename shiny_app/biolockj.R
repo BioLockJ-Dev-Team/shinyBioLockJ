@@ -12,6 +12,8 @@
 #                      docker=FALSE, aws=FALSE, external_modules=NULL, blj=FALSE, env_var=NULL,
 #                      blj_proj=NULL)
 
+### packages should be called via "namespace" ?
+# library(rjson)
 
 .bljJar <- function(){
     return("/Users/ieclabau/git/BioLockJ/dist/BioLockJ.jar")
@@ -97,7 +99,7 @@ listProps <- function(module=NULL){
     # If no args, it returns the list of properties used by the BioLockJ backbone.
     # If a modules is given, then it returns a list of all properties used by
     # that module.
-    args = c("listApiModules")
+    args = c("listProps")
     if ( !is.null(module) ){
         args = c(args, "--module", module)
     }
@@ -114,7 +116,7 @@ listAllProps <- function(external.modules=NULL){
 propType <- function(property, module=NULL, external.modules=NULL ){
     # Returns the type expected for the property: String, list, integer, positive number, etc.
     # If a module is supplied, then the modules propType method is used.
-    args = c("propType")
+    args = c("propType", "--property", property)
     if ( !is.null(module) ){
         args = c(args, "--module", module)
     }
@@ -124,7 +126,7 @@ propType <- function(property, module=NULL, external.modules=NULL ){
 describeProp <- function(property, module=NULL, external.modules=NULL ){
     # Returns a description of the property.
     # If a module is supplied, then the modules getDescription method is used.
-    args = c("describeProp")
+    args = c("describeProp", "--property", property)
     if ( !is.null(module) ){
         args = c(args, "--module", module)
     }
@@ -134,7 +136,7 @@ describeProp <- function(property, module=NULL, external.modules=NULL ){
 propValue <- function(property, config=NULL, module=NULL, external.modules=NULL ){
     # Returns the value for that property given that config file (optional) or 
     # no config file (ie the default value)
-    args = c("propValue")
+    args = c("propValue", "--property", property)
     if ( !is.null(config) ){
         args = c(args, "--config", config)
     }
@@ -154,14 +156,21 @@ isValidProp <- function(property, value, module=NULL, external.modules=NULL ){
     if ( !is.null(module) ){
         args = c(args, "--module", module)
     }
-    .callBioLockJApi(args, external.modules=external.modules)
+    val = .callBioLockJApi(args, external.modules=external.modules)
+    returnVal = NA
+    if (val=="true") returnVal = TRUE
+    if (val=="false") returnVal = FALSE
+    return(returnVal)
 }
 
 propInfo <- function(){
     # Returns a json formatted list of the general properties (listProps)
     # with the type, descrption and default for each property
     args=c("propInfo")
-    .callBioLockJApi(args)
+    json_lines = .callBioLockJApi(args)
+    json_str = paste(json_lines, collapse="")
+    obj = rjson::fromJSON(json_str)
+    return(obj)
 }
 
 moduleInfo <- function(external.modules=NULL){
@@ -169,7 +178,10 @@ moduleInfo <- function(external.modules=NULL){
     # implements the ApiModule interface, it lists the props used by the module,
     # and for each prop the type, descrption and default.
     args=c("moduleInfo")
-    .callBioLockJApi(args, external.modules=external.modules)
+    json_lines = .callBioLockJApi(args, external.modules=external.modules)
+    json_str = paste(json_lines, collapse="")
+    obj = rjson::fromJSON(json_str)
+    return(obj)
 }
 
 listMounts <- function(){
