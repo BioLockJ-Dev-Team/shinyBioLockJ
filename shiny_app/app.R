@@ -25,6 +25,10 @@ nameProperties <- function(propList){
 
 propInfo <- nameProperties(propInfo())
 
+splits = strsplit(names(propInfo), split = ".", fixed = TRUE)
+category = sapply(splits, function(s){s[1]})
+groupedProps = split(names(propInfo), f=category)
+
 moduleInfo <- moduleInfo()
 names(moduleInfo) <- sapply(moduleInfo, function(mi){mi$title})
 moduleInfo <- lapply(moduleInfo, function(mi){
@@ -80,6 +84,7 @@ ui <-  navbarPage(
              p("General properties are not specific to any one module."),
              uiOutput("genProps"),
              h2("Module Properties")),
+             # uiOutput("modProps")),
     tabPanel("Data Flow", 
              p("navbar"),p("spacer"),
              p("This panel is a placeholder tab.")),
@@ -130,21 +135,27 @@ server <- function(input, output, session) {
     
     # Settings
     output$genProps <- renderUI({
-        lapply(propInfo, function(prop){
-            tagList(
-                em(prop$type,),
-                renderText(prop$description),
-                textInput(inputId = paste(prop$property),
-                          #value = propValue(prop$property), # commend this out to run MUCH faster!!
-                          label = prop$property
-                )
-            )
-        })
+        do.call(tabsetPanel, 
+                lapply(as.list(names(groupedProps)), function(groupName){
+                    group = groupedProps[[groupName]]
+                    tabPanel(groupName, 
+                             p(paste("See the user guide for more info about", groupName, "properties.", collaps=" ")),
+                             lapply(group, function(propName){
+                                 prop = propInfo[[propName]]
+                                 tagList(em(prop$type,),
+                                         renderText(prop$description),
+                                         textInput(inputId = paste(prop$property),
+                                                   #value = propValue(prop$property), # commend this out to run MUCH faster!!
+                                                   label = prop$property))
+                             }))
+                }))
     })
+
     output$moduleListText <- renderUI({
         moduleLines = input$BioModules #sapply(input$BioModules, function(module){ module$usage })
         pre(paste(moduleLines, collapse ="<br>"))
     })
+    
     
     # Config file
     output$configText <- renderUI({
