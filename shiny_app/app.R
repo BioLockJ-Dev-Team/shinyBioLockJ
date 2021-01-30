@@ -8,6 +8,7 @@
 #
 
 library(shiny)
+# install.packages("shinythemes")
 library(shinythemes)
 # install.packages("sortable")
 library(sortable)
@@ -76,9 +77,8 @@ ui <-  navbarPage(
                                          placeholder = "alternative alias",
                                          width = '100%')),
                      column(2, actionButton("AddModuleButton", style = "margin-top: 20px;", "add to pipeline", class = "btn-success"))),
-                 uiOutput("orderModules"),
-                 textOutput("moduleOrder"))),
-    tabPanel("Settings",
+                 uiOutput("orderModules"))),
+    tabPanel("Properties",
              splitLayout(
                  fluidPage(p("navbar"),p("spacer"),
                            h2("General Properties"),
@@ -107,6 +107,7 @@ ui <-  navbarPage(
 
 server <- function(input, output, session) {
     values <- reactiveValues()
+    properties <- reactiveValues()
 
     # Home
     output$biolockjGitHub <- renderUI({
@@ -135,7 +136,7 @@ server <- function(input, output, session) {
         updateTextInput(session, "newAlias", value = "")
     })
     
-    # Settings
+    # Properties
     output$genProps <- renderUI({
         do.call(tabsetPanel, 
                 lapply(as.list(names(groupedProps)), function(groupName){
@@ -165,15 +166,28 @@ server <- function(input, output, session) {
             paste0(input$projectName, ".config")
         },
         content = function(file) {
-            writeLines(values$moduleList, file)
+            writeLines(configLines(), file)
         }
     )
-    output$configText <- renderUI({
-        lines = values$moduleList
-        do.call(pre, as.list(lines))
+    
+    configLines <- reactive({
+        lines = c("")
+        lines = c(lines, values$moduleList)
+        message("I'm looking at propInputBoxes...")
+        for(p in names(propInfo)){
+            message("I'm looking at...", p)
+            value = input[[p]]
+            message("its value is:", value)
+            line = paste(p, " = ", value, collapse=" = ")
+            message("new config line: ", line)
+            if ( length(value) > 0 && nchar(value) > 0 ) lines = c(lines, line)
+        }
+        lines
     })
     
-    # Testing
+    output$configText <- renderUI({
+        do.call(pre, as.list(configLines()))
+    })
     
 }
 
