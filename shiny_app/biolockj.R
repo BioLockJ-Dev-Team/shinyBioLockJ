@@ -143,7 +143,9 @@ propValue <- function(property, config=NULL, module=NULL, external.modules=NULL 
     if ( !is.null(module) ){
         args = c(args, "--module", module)
     }
-    .callBioLockJApi(args, external.modules=external.modules)
+    returnVal = .callBioLockJApi(args, external.modules=external.modules)
+    if (returnVal=="null") returnVal = ""
+    return(returnVal)
 }
 
 isValidProp <- function(property, value, module=NULL, external.modules=NULL ){
