@@ -60,7 +60,7 @@ ui <-  navbarPage(
              h1("BioLockJ Pipeline Builder"),
              uiOutput("biolockjGitHub"),
              uiOutput("biolockjUserGuide"),
-             p(""),
+             em("(optional)"),
              fileInput("existingConfig", label="Edit an existing config file")),
     tabPanel("Pipeline",
              fluidPage(
@@ -79,19 +79,25 @@ ui <-  navbarPage(
                  uiOutput("orderModules"),
                  textOutput("moduleOrder"))),
     tabPanel("Settings",
-             p("navbar"),p("spacer"),
-             h2("General Properties"),
-             p("General properties are not specific to any one module."),
-             uiOutput("genProps"),
-             h2("Module Properties")),
-             # uiOutput("modProps")),
+             splitLayout(
+                 fluidPage(p("navbar"),p("spacer"),
+                           h2("General Properties"),
+                           p("General properties are not specific to any one module."),
+                           uiOutput("genProps")),
+                 fluidPage(p("navbar"),p("spacer"),
+                           h2("Module Properties"),
+                           # uiOutput("modProps"),
+                           p("The properties for a given module include the properties that are specific to that module, as well as any general properties that the module is known to reference."))
+             )
+    ),
     tabPanel("Data Flow", 
              p("navbar"),p("spacer"),
              p("This panel is a placeholder tab.")),
     tabPanel("Save config file", 
              p("navbar"),p("spacer"),
-             "This how this pipeline configuration will be saved as a config file.",
-             actionButton("saveFile", "Save to file"),
+             textInput("projectName", "Project name", value="myPipeline", placeholder = "new project name"),
+             # actionButton("saveFile", "Save to file"),
+             downloadButton("downloadData", "Save config file"),
              uiOutput("configText")),
     tabPanel("Help", 
              p("navbar"),p("spacer"),
@@ -101,7 +107,7 @@ ui <-  navbarPage(
 
 server <- function(input, output, session) {
     values <- reactiveValues()
-    
+
     # Home
     output$biolockjGitHub <- renderUI({
         ghUrl <- a("BioLockJ GitHub", href="https://github.com/BioLockJ-Dev-Team/BioLockJ")
@@ -113,6 +119,7 @@ server <- function(input, output, session) {
     })
     
     # Pipeline
+    # getModuleOrder <- reactive(values$moduleList)
     output$orderModules <- renderUI({
         rank_list(
             text = "Drag and drop to re-order",
@@ -120,12 +127,7 @@ server <- function(input, output, session) {
             input_id = "orderModules",
             options = sortable_options(multiDrag = TRUE))
     })
-    getModuleOrder <- reactive({
-        text = input$orderModules
-        if(is.null(text) || length(text)==0 ) text = "(add modules to create a pipeline)"
-        text
-    })
-    output$moduleOrder <- renderPrint(getModuleOrder())
+    output$moduleOrder <- renderPrint(values$moduleList)
     observeEvent(input$AddModuleButton, {
         message("I know the button got pushed")
         runLine = makeRunLine(input$AddBioModule, input$newAlias)
@@ -157,11 +159,18 @@ server <- function(input, output, session) {
     })
     
     
-    # Config file
+    # Save config file
+    output$downloadData <- downloadHandler(
+        filename = function() {
+            paste0(input$projectName, ".config")
+        },
+        content = function(file) {
+            writeLines(values$moduleList, file)
+        }
+    )
     output$configText <- renderUI({
-        lapply(1:5, function(module){
-            pre(paste0("#BioModule path.to.module.class", module))
-        })
+        lines = values$moduleList
+        do.call(pre, as.list(lines))
     })
     
     # Testing
