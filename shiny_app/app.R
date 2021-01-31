@@ -145,7 +145,7 @@ server <- function(input, output, session) {
                              p(paste("See the user guide for more info about", groupName, "properties.", collaps=" ")),
                              lapply(group, function(propName){
                                  prop = propInfo[[propName]]
-                                 tagList(em(prop$type,),
+                                 tagList(em(prop$type),
                                          renderText(prop$description),
                                          textInput(inputId = paste(prop$property),
                                                    #value = propValue(prop$property), # commend this out to run MUCH faster!!
