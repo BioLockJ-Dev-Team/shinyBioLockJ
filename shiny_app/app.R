@@ -143,7 +143,7 @@ server <- function(input, output, session) {
                                  tagList(em(prop$type),
                                          renderText(prop$description),
                                          textInput(inputId = paste(prop$property),
-                                                   #value = propValue(prop$property), # commend this out to run MUCH faster!!
+                                                   value = prop$default,
                                                    label = prop$property))
                              }))
                 })
