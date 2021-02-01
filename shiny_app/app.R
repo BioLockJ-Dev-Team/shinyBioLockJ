@@ -104,7 +104,9 @@ ui <-  navbarPage(
 
 server <- function(input, output, session) {
     values <- reactiveValues()
-    properties <- reactiveValues()
+    pipelineProperties <- reactiveValues()
+    customProps <- reactiveValues()
+    hasCustomProps <- reactiveVal(FALSE)
 
     # Home
     output$biolockjGitHub <- renderUI({
@@ -141,14 +143,34 @@ server <- function(input, output, session) {
                              p(paste("See the user guide for more info about", groupName, "properties.", collaps=" ")),
                              lapply(group, function(propName){
                                  prop = propInfo[[propName]]
+                                 if ( is.null(pipelineProperties[[propName]]) ) {
+                                     message("property was null: ", propName)
+                                     pipelineProperties[[propName]] <- prop$default
+                                     message("now property has value: ", pipelineProperties[[propName]])
+                                 }
                                  tagList(em(prop$type),
                                          renderText(prop$description),
                                          textInput(inputId = paste(prop$property),
                                                    label = prop$property,
-                                                   value = prop$default,
+                                                   value = pipelineProperties[[propName]],
                                                    placeholder = prop$default))
                              }))
                 })
+        argsList[[length(argsList)+1]] <- tabPanel("ADD MORE", 
+                                                 p("Add custom properties here. All property names must be unique."),
+                                                 p("Any property can reference the exact value of any other property, for example:"),
+                                                 p("prop2 = build on ${prop1}"),
+                                                 fluidRow(
+                                                     column(4, textInput("customPropName","property name")), 
+                                                     column(5, textInput("customPropVal", "= value")),
+                                                     column(3, actionButton("addCostomPropBtn", "add", style = "margin-top: 25px;"))
+                                                 ),
+                                                 lapply(names(customProps), function(cp){
+                                                     message("creating option to remove property: ", cp)
+                                                            fluidRow(column(9, renderText(paste(cp, "=", customProps[[cp]]))),
+                                                                     column(3, actionButton(paste0("rm-", cp), "remove")))
+                                                     })
+        )
         argsList$selected = "input"
         do.call(tabsetPanel, argsList)
     })
@@ -156,6 +178,15 @@ server <- function(input, output, session) {
     output$moduleListText <- renderUI({
         moduleLines = input$BioModules #sapply(input$BioModules, function(module){ module$usage })
         pre(paste(moduleLines, collapse ="<br>"))
+    })
+    
+    observeEvent(input$addCostomPropBtn, {
+        message("The button was pushed! button: addCostomPropBtn")
+        for(p in names(propInfo)){
+            pipelineProperties[[p]] <- input[[p]]
+        }
+        hasCustomProps(TRUE)
+        customProps[[input$customPropName]] <- input$customPropVal
     })
     
     
@@ -171,19 +202,30 @@ server <- function(input, output, session) {
     
     configLines <- reactive({
         lines = c("")
-        lines = c(lines, values$moduleList)
+        lines = c(lines, input$orderModules)
         lines = c(lines, "")
+        message("I'm looking at customProps...")
+        if ( hasCustomProps() ){
+            lines = c(lines, "# Custom Properties")
+            for(cp in names(customProps)){
+                line = paste(cp, "=", customProps[[cp]])
+                lines = c(lines, line)
+            }
+            lines = c(lines, "")
+        }
+        
         message("I'm looking at propInputBoxes...")
+        lines = c(lines, "# General Properties")
         for(p in names(propInfo)){
             message("I'm looking at...", p)
             value = input[[p]]
             message("its value is:", value)
             line = paste(p, "=", value)
-            message("the default is: ", propInfo[[p]]$default)
+            # message("the default is: ", propInfo[[p]]$default)
             message("new config line: ", line)
             if ( length(value) > 0 && nchar(value) > 0 ){
                 notTheDefault = !is.null(propInfo[[p]]$default) && value != propInfo[[p]]$default
-                if ( notTheDefault || input$include_standard_defaults ){
+                if ( is.null(propInfo[[p]]$default) || notTheDefault || input$include_standard_defaults ){
                     lines = c(lines, line)
                 }
             }
