@@ -65,7 +65,7 @@ ui <-  navbarPage(
              checkboxInput("include_standard_defaults", "include defaults"),
              downloadButton("downloadData", "Save config file"),
              uiOutput("configText")),
-    tabPanel("Pipeline",
+    tabPanel("Modules",
              fluidPage(
                  h2("BioModule Run Order"),
                  fluidRow(
@@ -104,7 +104,7 @@ ui <-  navbarPage(
 
 server <- function(input, output, session) {
     values <- reactiveValues()
-    pipelineProperties <- reactiveValues()
+    pipelineProperties <- do.call(reactiveValues, lapply(propInfo, function(prop){ prop$default }))
     customProps <- reactiveValues()
     hasCustomProps <- reactiveVal(FALSE)
 
@@ -118,8 +118,7 @@ server <- function(input, output, session) {
         tagList("See the BioLockJ user guide:", ugUrl)
     })
     
-    # Pipeline
-    # getModuleOrder <- reactive(values$moduleList)
+    # Modules
     output$orderModules <- renderUI({
         rank_list(
             text = "Drag and drop to re-order",
