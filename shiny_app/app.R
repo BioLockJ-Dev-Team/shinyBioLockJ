@@ -138,8 +138,7 @@ server <- function(input, output, session) {
     
     # Properties
     output$genProps <- renderUI({
-        do.call(tabsetPanel, 
-                lapply(as.list(names(groupedProps)), function(groupName){
+        argsList =  lapply(as.list(names(groupedProps)), function(groupName){
                     group = groupedProps[[groupName]]
                     tabPanel(groupName, 
                              p(paste("See the user guide for more info about", groupName, "properties.", collaps=" ")),
@@ -151,7 +150,9 @@ server <- function(input, output, session) {
                                                    #value = propValue(prop$property), # commend this out to run MUCH faster!!
                                                    label = prop$property))
                              }))
-                }))
+                })
+        argsList$selected = "input"
+        do.call(tabsetPanel, argsList)
     })
 
     output$moduleListText <- renderUI({
