@@ -2,6 +2,10 @@
 */pipelines/*
 pipelines/*
 
+# The jar file is in the folder for publishing to shiny io
+shiny_app/jar/BioLockJ.jar
+shiny_app/rsconnect/*
+
 # History files
 .Rhistory
 .Rapp.history

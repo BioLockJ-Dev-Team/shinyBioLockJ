@@ -12,7 +12,7 @@ library(shiny)
 library(shinythemes)
 # install.packages("sortable")
 library(sortable)
-source('~/git/shiny_BioLockJ/shiny_app/biolockj.R')
+source('biolockj.R')
 
 
 

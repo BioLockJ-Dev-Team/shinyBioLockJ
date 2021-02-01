@@ -16,11 +16,11 @@
 # library(rjson)
 
 .bljJar <- function(){
-    return("/Users/ieclabau/git/BioLockJ/dist/BioLockJ.jar")
+    return("jar/BioLockJ.jar")
 }
 
 .bljProj <- function(){
-    return("/Users/ieclabau/git/shiny_BioLockJ/pipelines")
+    return("pipelines")
 }
 
 .getClassPath <- function(external.modules=NULL){
@@ -38,6 +38,7 @@
 }
 
 .callBioLockJ <- function(args, external.modules=NULL){
+    JAR = .bljJar()
     CLASS = "biolockj/BioLockJ"
     cp = .getClassPath( external.modules )
     CMD = capture.output( cat("java -cp", JAR, CLASS, args) )
@@ -64,6 +65,7 @@
 
 
 .callBioLockJApi <- function(args, external.modules=NULL){
+    JAR = .bljJar()
     CLASS = "biolockj/api/BioLockJ_API"
     cp = .getClassPath( external.modules )
     CMD = capture.output( cat("java -cp", JAR, CLASS, args) )
