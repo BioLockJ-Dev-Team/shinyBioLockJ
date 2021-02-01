@@ -59,10 +59,11 @@ ui <-  navbarPage(
     tabPanel("Home", 
              p("navbar"),p("spacer"),
              h1("BioLockJ Pipeline Builder"),
-             uiOutput("biolockjGitHub"),
-             uiOutput("biolockjUserGuide"),
              em("(optional)"),
-             fileInput("existingConfig", label="Edit an existing config file")),
+             fileInput("existingConfig", label="Upload an existing config file"),
+             textInput("projectName", "Project name", value="myPipeline", placeholder = "new project name"),
+             downloadButton("downloadData", "Save config file"),
+             uiOutput("configText")),
     tabPanel("Pipeline",
              fluidPage(
                  h2("BioModule Run Order"),
@@ -93,15 +94,10 @@ ui <-  navbarPage(
     tabPanel("Data Flow", 
              p("navbar"),p("spacer"),
              p("This panel is a placeholder tab.")),
-    tabPanel("Save config file", 
-             p("navbar"),p("spacer"),
-             textInput("projectName", "Project name", value="myPipeline", placeholder = "new project name"),
-             # actionButton("saveFile", "Save to file"),
-             downloadButton("downloadData", "Save config file"),
-             uiOutput("configText")),
     tabPanel("Help", 
              p("navbar"),p("spacer"),
-             p("This panel is a placeholder tab."))
+             uiOutput("biolockjGitHub"),
+             uiOutput("biolockjUserGuide"))
 )
 
 
