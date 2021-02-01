@@ -62,6 +62,7 @@ ui <-  navbarPage(
              em("(optional)"),
              fileInput("existingConfig", label="Upload an existing config file"),
              textInput("projectName", "Project name", value="myPipeline", placeholder = "new project name"),
+             checkboxInput("include_standard_defaults", "include defaults"),
              downloadButton("downloadData", "Save config file"),
              uiOutput("configText")),
     tabPanel("Pipeline",
@@ -143,8 +144,9 @@ server <- function(input, output, session) {
                                  tagList(em(prop$type),
                                          renderText(prop$description),
                                          textInput(inputId = paste(prop$property),
+                                                   label = prop$property,
                                                    value = prop$default,
-                                                   label = prop$property))
+                                                   placeholder = prop$default))
                              }))
                 })
         argsList$selected = "input"
@@ -170,14 +172,21 @@ server <- function(input, output, session) {
     configLines <- reactive({
         lines = c("")
         lines = c(lines, values$moduleList)
+        lines = c(lines, "")
         message("I'm looking at propInputBoxes...")
         for(p in names(propInfo)){
             message("I'm looking at...", p)
             value = input[[p]]
             message("its value is:", value)
-            line = paste(p, " = ", value, collapse=" = ")
+            line = paste(p, "=", value)
+            message("the default is: ", propInfo[[p]]$default)
             message("new config line: ", line)
-            if ( length(value) > 0 && nchar(value) > 0 ) lines = c(lines, line)
+            if ( length(value) > 0 && nchar(value) > 0 ){
+                notTheDefault = !is.null(propInfo[[p]]$default) && value != propInfo[[p]]$default
+                if ( notTheDefault || input$include_standard_defaults ){
+                    lines = c(lines, line)
+                }
+            }
         }
         lines
     })
