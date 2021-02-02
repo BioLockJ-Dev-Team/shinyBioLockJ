@@ -17,30 +17,19 @@ source('biolockj.R')
 
 
 
-# get initial BioLockJ info
+### get initial BioLockJ info
 bljVer = biolockjVersion()
+propInfo <- propInfo()
+moduleInfo <- moduleInfo()
 
-nameProperties <- function(propList){
-    names = sapply(propList, function(prop){prop$property})
-    names(propList) <- names
-    return(propList)
-}
-
-propInfo <- nameProperties(propInfo())
-
+# break out properties into categories
 splits = strsplit(names(propInfo), split = ".", fixed = TRUE)
 category = sapply(splits, function(s){s[1]})
 groupedProps = split(names(propInfo), f=category)
 
-moduleInfo <- moduleInfo()
-names(moduleInfo) <- sapply(moduleInfo, function(mi){mi$title})
-moduleInfo <- lapply(moduleInfo, function(mi){
-    mi$properties = nameProperties(mi$properties)
-    return(mi)
-})
+# map module short name to run line syntax
 moduleRunLines <- sapply(moduleInfo, function(mi){mi$usage})
 names(moduleRunLines) <- names(moduleInfo)
-
 
 
 ###

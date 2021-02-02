@@ -81,6 +81,12 @@ biolockjVersion <- function(showBuild=FALSE){
     return(system(CMD, intern = TRUE))
 }
 
+.nameProperties <- function(propList){
+    names = sapply(propList, function(prop){prop$property})
+    names(propList) <- names
+    return(propList)
+}
+
 last_pipeline <-function(){
     # Returns the path to the most recent pipeline.
     args = "last-pipeline"
@@ -130,7 +136,7 @@ propType <- function(property, module=NULL, external.modules=NULL ){
     if ( !is.null(module) ){
         args = c(args, "--module", module)
     }
-    .callBioLockJApi(args, external.modules=external.modules)
+    callBioLockJApi(args, external.modules=external.modules)
 }
 
 describeProp <- function(property, module=NULL, external.modules=NULL ){
@@ -182,7 +188,7 @@ propInfo <- function(){
     json_lines = .callBioLockJApi(args)
     json_str = paste(json_lines, collapse="")
     obj = rjson::fromJSON(json_str)
-    return(obj)
+    return(.nameProperties(obj))
 }
 
 moduleInfo <- function(external.modules=NULL){
@@ -193,7 +199,12 @@ moduleInfo <- function(external.modules=NULL){
     json_lines = .callBioLockJApi(args, external.modules=external.modules)
     json_str = paste(json_lines, collapse="")
     obj = rjson::fromJSON(json_str)
-    return(obj)
+    names(obj) <- sapply(obj, function(mi){mi$title})
+    moduleIn <- lapply(obj, function(mi){
+        mi$properties = .nameProperties(mi$properties)
+        return(mi)
+    })
+    return(moduleIn)
 }
 
 listMounts <- function(){
