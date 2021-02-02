@@ -18,6 +18,8 @@ source('biolockj.R')
 
 
 # get initial BioLockJ info
+bljVer = biolockjVersion()
+
 nameProperties <- function(propList){
     names = sapply(propList, function(prop){prop$property})
     names(propList) <- names
@@ -38,6 +40,8 @@ moduleInfo <- lapply(moduleInfo, function(mi){
 })
 moduleRunLines <- sapply(moduleInfo, function(mi){mi$usage})
 names(moduleRunLines) <- names(moduleInfo)
+
+
 
 ###
 makeRunLine <- function(moduleName, alias=""){
@@ -66,6 +70,7 @@ ui <-  navbarPage(
              ),
              textInput("projectName", "Project name", value="myPipeline", placeholder = "new project name"),
              checkboxInput("include_standard_defaults", "include defaults"),
+             checkboxInput("include_biolockj_version", "include BioLockJ version"),
              downloadButton("downloadData", "Save config file"),
              uiOutput("configText")),
     tabPanel("Modules",
@@ -269,7 +274,11 @@ server <- function(input, output, session) {
     )
     
     configLines <- reactive({
-        lines = c("")
+        lines = c()
+        if (input$include_biolockj_version){
+            lines = c(lines, paste("# This config file was last updated while referencing BioLockJ version:", bljVer))
+        }
+        lines = c(lines, "")
         lines = c(lines, values$moduleList)
         lines = c(lines, "")
         message("I'm looking at customProps...")

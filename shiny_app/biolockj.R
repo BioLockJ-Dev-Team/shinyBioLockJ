@@ -42,9 +42,17 @@
     CLASS = "biolockj/BioLockJ"
     cp = .getClassPath( external.modules )
     CMD = capture.output( cat("java -cp", JAR, CLASS, args) )
+    message(CMD)
+    return(system(CMD, intern = TRUE))
 }
 
-
+biolockjVersion <- function(showBuild=FALSE){
+    ver = .callBioLockJ("--version")
+    if ( !showBuild ){
+        ver = strsplit(ver, split="Build", fixed=TRUE)[[1]][1]
+    }
+    return(trimws(ver))
+}
 
 ##### API
 
