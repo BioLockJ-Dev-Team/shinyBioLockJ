@@ -13,6 +13,7 @@ library(shinythemes)
 # install.packages("sortable")
 library(sortable)
 source('biolockj.R')
+source('biolockj_gui_bridge.R')
 
 
 ### get initial BioLockJ info
@@ -34,46 +35,9 @@ groupedProps = split(names(propInfo), f=category)
 moduleRunLines <- sapply(moduleInfo, function(mi){mi$usage})
 names(moduleRunLines) <- names(moduleInfo)
 
-
-###
-makeRunLine <- function(moduleName, alias=""){
-    className = moduleRunLines[moduleName]
-    if ( nchar(alias) > 0 ) {
-        runLine = paste(className, "AS", alias)
-    }else{
-        runLine = paste(className)
-    }
-    return(runLine)
-}
-
-aliasFromRunline <- function(line){
-    if (grepl("AS", line)){
-        parts = strsplit(line, "AS", fixed=TRUE)[[1]]
-    }else{
-        parts = strsplit(line, ".", fixed=TRUE)[[1]]
-    }
-    alias = trimws(parts[length(parts)])
-    return(alias)
-}
-
-isValidAlias <- function(alias, existingAlia=c() ){
-    firstChar = substr(alias,1,1)
-    if ( ! firstChar %in% LETTERS ) {
-        message("To be a valid alias, the first character must be a capital letter.")
-        return(FALSE)
-    }
-    if ( grepl(" ", alias)){
-        message("An alias cannot contain spaces.")
-        return(FALSE)
-    }
-    if (alias %in% existingAlia){
-        message("Each alias must be unique. There is already a module called ", alias)
-        return(FALSE)
-    }
-    return(TRUE)
-}
-
-###
+####################################################################################################
+#############################              UI              #########################################
+####################################################################################################
 
 ui <-  navbarPage(
     position = "fixed-top",
@@ -131,8 +95,15 @@ ui <-  navbarPage(
 )
 
 
+####################################################################################################
+#############################            SERVER            #########################################
+####################################################################################################
+
 server <- function(input, output, session) {
     
+    ####################################################################################################
+    #############################         Core Objects         #########################################
+    ####################################################################################################
     ## Use reactive objects as the single source of truth.
     customProps <- reactiveValues()
     values <- reactiveValues()
@@ -147,8 +118,71 @@ server <- function(input, output, session) {
     hasCustomProps <- reactiveVal(FALSE) #TODO: reactive( length(isolate(input$orderModules)) > 0 )
     hasModules <- reactive( length(isolate(input$orderModules)) > 0 )
 
+
+    ####################################################################################################
+    #############################         Dynamic UI           #########################################
+    ####################################################################################################
+    # Defining the UI.  This would be in the ui function... but its dynamic.
     
     # Home
+    output$configText <- renderUI({
+        do.call(pre, as.list(configLines()))
+    })
+    
+    # Modules
+    output$orderModules <- renderUI({
+        rank_list(
+            text = "Drag and drop to re-order",
+            labels = values$moduleList,
+            input_id = "orderModules",
+            options = sortable_options(multiDrag = TRUE))
+    })
+
+    
+    # Properties
+    output$genProps <- renderUI({
+        argsList =  lapply(as.list(names(groupedProps)), function(groupName){
+            group = groupedProps[[groupName]]
+            tabPanel(groupName, 
+                     p(paste("See the user guide for more info about", groupName, "properties.", collaps=" ")),
+                     lapply(group, function(propName){
+                         prop = propInfo[[propName]]
+                         propUI <- tagList(em(prop$type),
+                                           renderText(prop$description),
+                                           textInput(inputId = propName,
+                                                     label = propName,
+                                                     value = isolate(pipelineProperties[[propName]]), #prop$default, 
+                                                     placeholder = prop$default))
+                         observeEvent(input[[propName]],{
+                             message("I see the text input for ", propName, " has been updated.")
+                             pipelineProperties[[propName]] <- input[[propName]]
+                         })
+                         propUI
+                     }))
+        })
+        argsList[[length(argsList)+1]] <- tabPanel("ADD MORE",
+                                                   p("Add custom properties here. All property names must be unique."),
+                                                   p("Any property can reference the exact value of any other property, for example:"),
+                                                   p("prop2 = build on ${prop1}"),
+                                                   fluidRow(
+                                                       column(4, textInput("customPropName","property name")), 
+                                                       column(5, textInput("customPropVal", "= value")),
+                                                       column(3, actionButton("addCostomPropBtn", "add", style = "margin-top: 25px;"))
+                                                   ),
+                                                   lapply(names(customProps), function(cp){
+                                                       message("creating option to remove property: ", cp)
+                                                       fluidRow(column(9, renderText(paste(cp, "=", customProps[[cp]]))),
+                                                                column(3, actionButton(paste0("rm-", cp), "remove")))
+                                                   })
+        )
+        argsList$selected = "input"
+        argsList$id = "genPropsTabSet"
+        do.call(tabsetPanel, argsList)
+    })
+    
+    output$modulePropsHeader <- renderText("The properties for a given module include the properties that are specific to that module, as well as any general properties that the module is known to reference.")
+    
+    # Help
     output$biolockjGitHub <- renderUI({
         ghUrl <- a("BioLockJ GitHub", href="https://github.com/BioLockJ-Dev-Team/BioLockJ")
         tagList("The central BioLockJ resource is the GitHub repository:", ghUrl)
@@ -158,6 +192,47 @@ server <- function(input, output, session) {
         ugUrl <- a("BioLockJ userguide", href="https://biolockj.readthedocs.io/en/latest/")
         tagList("See the BioLockJ user guide:", ugUrl)
     })
+    
+    ####################################################################################################
+    #############################       Button Actions         #########################################
+    ####################################################################################################
+    # define event handlers for buttons
+    
+    observeEvent(input$populateExistingConfig, {
+        message("The button got pushed: populateExistingConfig")
+        req( input$existingConfig )
+        populateModules()
+        populateProps()
+        populateProjectName()
+    })
+    
+    output$downloadData <- downloadHandler(
+        filename = function() {
+            paste0(input$projectName, ".config")
+        },
+        content = function(file) {
+            writeLines(configLines(), file)
+        }
+    )
+    
+    observeEvent(input$AddModuleButton, {
+        message("I know the button got pushed")
+        runLine = makeRunLine(input$AddBioModule, input$newAlias)
+        values$moduleList <- c(isolate(input$orderModules), runLine)
+        updateTextInput(session, "newAlias", value = "")
+    })
+    
+    observeEvent(input$addCostomPropBtn, {
+        message("The button was pushed! button: addCostomPropBtn")
+        hasCustomProps(TRUE)
+        customProps[[input$customPropName]] <- input$customPropVal
+        updateTabsetPanel(session, "genPropsTabSet", selected = "ADD MORE")
+    })
+    
+    ####################################################################################################
+    #############################           Actions            #########################################
+    ####################################################################################################
+    # reactive expressions that are intuitively like functions
     
     existingLines <- reactive({
         readLines( input$existingConfig$datapath )
@@ -205,100 +280,6 @@ server <- function(input, output, session) {
         updateTextInput(session, "projectName", value=newName)
     })
     
-    observeEvent(input$populateExistingConfig, {
-        message("The button got pushed: populateExistingConfig")
-        req( input$existingConfig )
-        populateModules()
-        populateProps()
-        populateProjectName()
-    })
-    
-    
-    # Modules
-    output$orderModules <- renderUI({
-        rank_list(
-            text = "Drag and drop to re-order",
-            labels = values$moduleList,
-            input_id = "orderModules",
-            options = sortable_options(multiDrag = TRUE))
-    })
-    observeEvent(input$orderModules, {
-        values$moduleList <- input$orderModules
-    })
-    
-    observeEvent(input$AddModuleButton, {
-        message("I know the button got pushed")
-        runLine = makeRunLine(input$AddBioModule, input$newAlias)
-        values$moduleList <- c(isolate(input$orderModules), runLine)
-        updateTextInput(session, "newAlias", value = "")
-    })
-    
-    # Properties
-    output$genProps <- renderUI({
-        argsList =  lapply(as.list(names(groupedProps)), function(groupName){
-                    group = groupedProps[[groupName]]
-                    tabPanel(groupName, 
-                             p(paste("See the user guide for more info about", groupName, "properties.", collaps=" ")),
-                             lapply(group, function(propName){
-                                 prop = propInfo[[propName]]
-                                 propUI <- tagList(em(prop$type),
-                                         renderText(prop$description),
-                                         textInput(inputId = propName,
-                                                   label = propName,
-                                                   value = isolate(pipelineProperties[[propName]]), #prop$default, 
-                                                   placeholder = prop$default))
-                                 observeEvent(input[[propName]],{
-                                     message("I see the text input for ", propName, " has been updated.")
-                                     pipelineProperties[[propName]] <- input[[propName]]
-                                 })
-                                 propUI
-                             }))
-                })
-        argsList[[length(argsList)+1]] <- tabPanel("ADD MORE",
-                                                 p("Add custom properties here. All property names must be unique."),
-                                                 p("Any property can reference the exact value of any other property, for example:"),
-                                                 p("prop2 = build on ${prop1}"),
-                                                 fluidRow(
-                                                     column(4, textInput("customPropName","property name")), 
-                                                     column(5, textInput("customPropVal", "= value")),
-                                                     column(3, actionButton("addCostomPropBtn", "add", style = "margin-top: 25px;"))
-                                                 ),
-                                                 lapply(names(customProps), function(cp){
-                                                     message("creating option to remove property: ", cp)
-                                                            fluidRow(column(9, renderText(paste(cp, "=", customProps[[cp]]))),
-                                                                     column(3, actionButton(paste0("rm-", cp), "remove")))
-                                                     })
-        )
-        argsList$selected = "input"
-        argsList$id = "genPropsTabSet"
-        do.call(tabsetPanel, argsList)
-    })
-
-    output$moduleListText <- renderUI({
-        moduleLines = input$BioModules #sapply(input$BioModules, function(module){ module$usage })
-        pre(paste(moduleLines, collapse ="<br>"))
-    })
-    
-    observeEvent(input$addCostomPropBtn, {
-        message("The button was pushed! button: addCostomPropBtn")
-        hasCustomProps(TRUE)
-        customProps[[input$customPropName]] <- input$customPropVal
-        updateTabsetPanel(session, "genPropsTabSet", selected = "ADD MORE")
-    })
-    
-    output$modulePropsHeader <- renderText("The properties for a given module include the properties that are specific to that module, as well as any general properties that the module is known to reference.")
-    
-    
-    # Save config file
-    output$downloadData <- downloadHandler(
-        filename = function() {
-            paste0(input$projectName, ".config")
-        },
-        content = function(file) {
-            writeLines(configLines(), file)
-        }
-    )
-    
     configLines <- reactive({
         lines = c()
         if (input$include_biolockj_version){
@@ -333,14 +314,18 @@ server <- function(input, output, session) {
     })
     
     
-    output$configText <- renderUI({
-        do.call(pre, as.list(configLines()))
+    ####################################################################################################
+    #############################           Synchrony          #########################################
+    ####################################################################################################
+    # Reactive espressions and observers that serve to keep things smooth and synchronized.
+    # These make the app nice, but they are not fundamental to the understanding of the layout and workings.
+    
+    # Modules
+    observeEvent(input$orderModules, {
+        values$moduleList <- input$orderModules
     })
     
-    
-    ## observers
-    
-    # placeholder of new alias
+    # placeholder of new alias shows the current implied alias
     showDefaultAlias <- reactive({
         possibleLine = makeRunLine(input$AddBioModule, input$newAlias)
         derivedAlias = aliasFromRunline( possibleLine )
@@ -355,6 +340,9 @@ server <- function(input, output, session) {
         setDefaultAliasPlaceholder()
     })
     
+    # Properties
+    # The essential observers that keep the pipelineProperties synchronized are defined within 
+    # the renderUI function that creates the inputs.
     
 }
 
