@@ -56,11 +56,14 @@ ui <-  navbarPage(
     position = "fixed-top",
     theme = shinytheme("cerulean"),
     "BioLockJ",
-    tabPanel("Home", 
+    tabPanel("Home",
              p("navbar"),p("spacer"),
              h1("BioLockJ Pipeline Builder"),
              em("(optional)"),
-             fileInput("existingConfig", label="Upload an existing config file"),
+             fluidRow(
+                 column(6, fileInput("existingConfig", label="Upload an existing config file", accept = c(".properties", ".config"), width = "100%")),
+                 column(6, actionButton("populateExistingConfig", "pull values", style = "margin-top: 25px;"))
+             ),
              textInput("projectName", "Project name", value="myPipeline", placeholder = "new project name"),
              checkboxInput("include_standard_defaults", "include defaults"),
              downloadButton("downloadData", "Save config file"),
@@ -89,13 +92,14 @@ ui <-  navbarPage(
                  fluidPage(p("navbar"),p("spacer"),
                            h2("Module Properties"),
                            # uiOutput("modProps"),
-                           p("The properties for a given module include the properties that are specific to that module, as well as any general properties that the module is known to reference."))
+                           p(),
+                           textOutput("modulePropsHeader"))
              )
     ),
-    tabPanel("Data Flow", 
+    tabPanel("Data Flow",
              p("navbar"),p("spacer"),
              p("This panel is a placeholder tab.")),
-    tabPanel("Help", 
+    tabPanel("Help",
              p("navbar"),p("spacer"),
              uiOutput("biolockjGitHub"),
              uiOutput("biolockjUserGuide"))
@@ -103,20 +107,81 @@ ui <-  navbarPage(
 
 
 server <- function(input, output, session) {
-    values <- reactiveValues()
-    pipelineProperties <- do.call(reactiveValues, lapply(propInfo, function(prop){ prop$default }))
+    
+    ## Use reactive objects as the single source of truth.
     customProps <- reactiveValues()
-    hasCustomProps <- reactiveVal(FALSE)
+    values <- reactiveValues()
+    
+    ### IMPORTANT !
+    # GET the property values through this object; the pipelineProperties reactiveValues object
+    # SET the property values through the input$[propName] object
+    # an observeEvent ensures the flow of info from the input$ to the reactiveValues
+    pipelineProperties <- do.call(reactiveValues, lapply(propInfo, function(prop){ prop$default }))
 
+    # TODO: what is the most effective way to querry these states
+    hasCustomProps <- reactiveVal(FALSE) #TODO: reactive( length(isolate(input$orderModules)) > 0 )
+    hasModules <- reactive( length(isolate(input$orderModules)) > 0 )
+
+    
     # Home
     output$biolockjGitHub <- renderUI({
         ghUrl <- a("BioLockJ GitHub", href="https://github.com/BioLockJ-Dev-Team/BioLockJ")
         tagList("The central BioLockJ resource is the GitHub repository:", ghUrl)
     })
+    
     output$biolockjUserGuide <- renderUI({
         ugUrl <- a("BioLockJ userguide", href="https://biolockj.readthedocs.io/en/latest/")
         tagList("See the BioLockJ user guide:", ugUrl)
     })
+    
+    existingLines <- reactive({
+        readLines( input$existingConfig$datapath )
+    })
+    
+    populateModules <- reactive({
+        existingLines <- existingLines()
+        exModOrder = existingLines[ grep("^#BioModule ", existingLines) ]
+        if (length(exModOrder) > 0){
+            values$moduleList <- exModOrder
+        }
+    })
+    
+    populateProps <- reactive({
+        existingLines <- existingLines()
+        exProps = existingLines[ grep("^#", existingLines, invert = TRUE) ]
+        exProps = exProps[ grep("=", exProps) ]
+        splits = strsplit(exProps, split="=", fixed=TRUE)
+        splits = splits[which(sapply(splits, function(s){length(s) >= 2}))]
+        vals = sapply(splits, function(pair){trimws(paste0(pair[2:length(pair)], collapse=""))})
+        names(vals) = sapply(splits, function(pair){trimws(pair[1])})
+        if (length(vals) > 0 ){
+            for( propName in names(vals) ){
+                message("updating property value: ", propName, " = ", vals[propName])
+                # If propName is a genProp, set genProp
+                if ( propName %in% names(propInfo) ){
+                    # if input object is established, set through that
+                    # otherwise, set value in pipelineProperties object Directly
+                    if (!is.null(input[[propName]])){
+                        updateTextInput(session, propName, value = paste(vals[propName]))
+                    }else{
+                        pipelineProperties[[propName]] <- vals[propName]
+                    }
+                }else{
+                    hasCustomProps(TRUE)
+                    customProps[[propName]] <- vals[propName]
+                }
+                
+            }
+        }
+    })
+    
+    observeEvent(input$populateExistingConfig, {
+        message("The button got pushed: populateExistingConfig")
+        req( input$existingConfig )
+        populateModules()
+        populateProps()
+    })
+    
     
     # Modules
     output$orderModules <- renderUI({
@@ -126,7 +191,10 @@ server <- function(input, output, session) {
             input_id = "orderModules",
             options = sortable_options(multiDrag = TRUE))
     })
-    output$moduleOrder <- renderPrint(values$moduleList)
+    observeEvent(input$orderModules, {
+        values$moduleList <- input$orderModules
+    })
+    
     observeEvent(input$AddModuleButton, {
         message("I know the button got pushed")
         runLine = makeRunLine(input$AddBioModule, input$newAlias)
@@ -142,20 +210,20 @@ server <- function(input, output, session) {
                              p(paste("See the user guide for more info about", groupName, "properties.", collaps=" ")),
                              lapply(group, function(propName){
                                  prop = propInfo[[propName]]
-                                 if ( is.null(pipelineProperties[[propName]]) ) {
-                                     message("property was null: ", propName)
-                                     pipelineProperties[[propName]] <- prop$default
-                                     message("now property has value: ", pipelineProperties[[propName]])
-                                 }
-                                 tagList(em(prop$type),
+                                 propUI <- tagList(em(prop$type),
                                          renderText(prop$description),
-                                         textInput(inputId = paste(prop$property),
-                                                   label = prop$property,
-                                                   value = pipelineProperties[[propName]],
+                                         textInput(inputId = propName,
+                                                   label = propName,
+                                                   value = isolate(pipelineProperties[[propName]]), #prop$default, 
                                                    placeholder = prop$default))
+                                 observeEvent(input[[propName]],{
+                                     message("I see the text input for ", propName, " has been updated.")
+                                     pipelineProperties[[propName]] <- input[[propName]]
+                                 })
+                                 propUI
                              }))
                 })
-        argsList[[length(argsList)+1]] <- tabPanel("ADD MORE", 
+        argsList[[length(argsList)+1]] <- tabPanel("ADD MORE",
                                                  p("Add custom properties here. All property names must be unique."),
                                                  p("Any property can reference the exact value of any other property, for example:"),
                                                  p("prop2 = build on ${prop1}"),
@@ -171,6 +239,7 @@ server <- function(input, output, session) {
                                                      })
         )
         argsList$selected = "input"
+        argsList$id = "genPropsTabSet"
         do.call(tabsetPanel, argsList)
     })
 
@@ -181,12 +250,12 @@ server <- function(input, output, session) {
     
     observeEvent(input$addCostomPropBtn, {
         message("The button was pushed! button: addCostomPropBtn")
-        for(p in names(propInfo)){
-            pipelineProperties[[p]] <- input[[p]]
-        }
         hasCustomProps(TRUE)
         customProps[[input$customPropName]] <- input$customPropVal
+        updateTabsetPanel(session, "genPropsTabSet", selected = "ADD MORE")
     })
+    
+    output$modulePropsHeader <- renderText("The properties for a given module include the properties that are specific to that module, as well as any general properties that the module is known to reference.")
     
     
     # Save config file
@@ -201,7 +270,7 @@ server <- function(input, output, session) {
     
     configLines <- reactive({
         lines = c("")
-        lines = c(lines, input$orderModules)
+        lines = c(lines, values$moduleList)
         lines = c(lines, "")
         message("I'm looking at customProps...")
         if ( hasCustomProps() ){
@@ -216,12 +285,8 @@ server <- function(input, output, session) {
         message("I'm looking at propInputBoxes...")
         lines = c(lines, "# General Properties")
         for(p in names(propInfo)){
-            message("I'm looking at...", p)
-            value = input[[p]]
-            message("its value is:", value)
+            value = pipelineProperties[[p]] # input[[p]]
             line = paste(p, "=", value)
-            # message("the default is: ", propInfo[[p]]$default)
-            message("new config line: ", line)
             if ( length(value) > 0 && nchar(value) > 0 ){
                 notTheDefault = !is.null(propInfo[[p]]$default) && value != propInfo[[p]]$default
                 if ( is.null(propInfo[[p]]$default) || notTheDefault || input$include_standard_defaults ){
@@ -231,6 +296,7 @@ server <- function(input, output, session) {
         }
         lines
     })
+    
     
     output$configText <- renderUI({
         do.call(pre, as.list(configLines()))
