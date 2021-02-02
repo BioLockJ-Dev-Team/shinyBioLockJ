@@ -20,6 +20,11 @@ bljVer = biolockjVersion()
 propInfo <- propInfo()
 moduleInfo <- moduleInfo()
 
+# remove special properties that are set separately or 
+propInfo[["biolockj.version"]] <- NULL # only meant to be set by running biolockj
+propInfo[["pipeline.defaultProps"]] <- NULL # gui needs to actually upload files
+propInfo[["project.defaultProps"]] <- NULL # gui needs to actually upload files
+
 # break out properties into categories
 splits = strsplit(names(propInfo), split = ".", fixed = TRUE)
 category = sapply(splits, function(s){s[1]})
