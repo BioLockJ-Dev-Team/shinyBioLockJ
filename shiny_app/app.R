@@ -64,6 +64,7 @@ ui <-  navbarPage(
              p("navbar"),p("spacer"),
              h1("BioLockJ Pipeline Builder"),
              em("(optional)"),
+             p(em("When you pull values from an existing file, the values from the file will replace anything configured here.")),
              fluidRow(
                  column(6, fileInput("existingConfig", label="Upload an existing config file", accept = c(".properties", ".config"), width = "100%")),
                  column(6, actionButton("populateExistingConfig", "pull values", style = "margin-top: 25px;"))
@@ -180,11 +181,17 @@ server <- function(input, output, session) {
         }
     })
     
+    populateProjectName <- reactive({
+        newName = tools::file_path_sans_ext(input$existingConfig$name)
+        updateTextInput(session, "projectName", value=newName)
+    })
+    
     observeEvent(input$populateExistingConfig, {
         message("The button got pushed: populateExistingConfig")
         req( input$existingConfig )
         populateModules()
         populateProps()
+        populateProjectName()
     })
     
     
