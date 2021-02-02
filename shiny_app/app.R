@@ -15,8 +15,6 @@ library(sortable)
 source('biolockj.R')
 
 
-
-
 ### get initial BioLockJ info
 bljVer = biolockjVersion()
 propInfo <- propInfo()
@@ -41,6 +39,33 @@ makeRunLine <- function(moduleName, alias=""){
         runLine = paste(className)
     }
     return(runLine)
+}
+
+aliasFromRunline <- function(line){
+    if (grepl("AS", line)){
+        parts = strsplit(line, "AS", fixed=TRUE)[[1]]
+    }else{
+        parts = strsplit(line, ".", fixed=TRUE)[[1]]
+    }
+    alias = trimws(parts[length(parts)])
+    return(alias)
+}
+
+isValidAlias <- function(alias, existingAlia=c() ){
+    firstChar = substr(alias,1,1)
+    if ( ! firstChar %in% LETTERS ) {
+        message("To be a valid alias, the first character must be a capital letter.")
+        return(FALSE)
+    }
+    if ( grepl(" ", alias)){
+        message("An alias cannot contain spaces.")
+        return(FALSE)
+    }
+    if (alias %in% existingAlia){
+        message("Each alias must be unique. There is already a module called ", alias)
+        return(FALSE)
+    }
+    return(TRUE)
 }
 
 ###
@@ -306,6 +331,25 @@ server <- function(input, output, session) {
     output$configText <- renderUI({
         do.call(pre, as.list(configLines()))
     })
+    
+    
+    ## observers
+    
+    # placeholder of new alias
+    showDefaultAlias <- reactive({
+        possibleLine = makeRunLine(input$AddBioModule, input$newAlias)
+        derivedAlias = aliasFromRunline( possibleLine )
+    })
+    setDefaultAliasPlaceholder <- reactive({
+        updateTextInput(session, "newAlias", placeholder = showDefaultAlias() )
+    })
+    observeEvent(input$AddBioModule, {
+        setDefaultAliasPlaceholder()
+    })
+    observeEvent(input$newAlias, {
+        setDefaultAliasPlaceholder()
+    })
+    
     
 }
 
