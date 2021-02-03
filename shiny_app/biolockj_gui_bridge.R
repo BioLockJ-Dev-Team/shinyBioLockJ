@@ -19,8 +19,8 @@ makeRunLine <- function(moduleName, alias=""){
 }
 
 aliasFromRunline <- function(line){
-    if (grepl("AS", line)){
-        parts = strsplit(line, "AS", fixed=TRUE)[[1]]
+    if (grepl(" AS ", line)){
+        parts = strsplit(line, " AS ", fixed=TRUE)[[1]]
     }else{
         parts = strsplit(line, ".", fixed=TRUE)[[1]]
     }
