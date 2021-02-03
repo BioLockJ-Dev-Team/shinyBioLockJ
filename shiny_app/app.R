@@ -42,60 +42,62 @@ names(moduleRunLines) <- names(moduleInfo)
 #############################              UI              #########################################
 ####################################################################################################
 
-ui <-  navbarPage(
-    position = "fixed-top",
-    theme = shinytheme("cerulean"),
-    "BioLockJ",
-    tabPanel("Home",
-             p("navbar"),p("spacer"),
-             h1("BioLockJ Pipeline Builder"),
-             em("(optional)"),
-             p(em("When you pull values from an existing file, the values from the file will replace anything configured here.")),
-             fluidRow(
-                 column(6, fileInput("existingConfig", label="Upload an existing config file", accept = c(".properties", ".config"), width = "100%")),
-                 column(6, actionButton("populateExistingConfig", "pull values", style = "margin-top: 25px;"))
-             ),
-             textInput("projectName", "Project name", value="myPipeline", placeholder = "new project name"),
-             checkboxInput("include_standard_defaults", "include defaults"),
-             checkboxInput("include_biolockj_version", "include BioLockJ version"),
-             downloadButton("downloadData", "Save config file"),
-             uiOutput("configText")),
-    tabPanel("Modules",
-             fluidPage(    
-                 shinyFeedback::useShinyFeedback(),
-                 h2("BioModule Run Order"),
+ui <-  fluidPage( 
+    shinyFeedback::useShinyFeedback(),
+    navbarPage(
+        position = "fixed-top",
+        theme = shinytheme("cerulean"),
+        "BioLockJ",
+        tabPanel("Home",
+                 p("navbar"),p("spacer"),
+                 h1("BioLockJ Pipeline Builder"),
+                 em("(optional)"),
+                 p(em("When you pull values from an existing file, the values from the file will replace anything configured here.")),
                  fluidRow(
-                     column(5,selectInput("AddBioModule", 
-                                          "Select new BioModule", 
-                                          names(moduleInfo), 
-                                          selected = "GenMod",
-                                          width = '100%')),
-                     column(1, "AS", style = "margin-top: 30px;"),
-                     column(4, textInput("newAlias", "", 
-                                         placeholder = "alternative alias",
-                                         width = '100%')),
-                     column(2, actionButton("AddModuleButton", style = "margin-top: 20px;", "add to pipeline", class = "btn-success"))),
-                 uiOutput("orderModules"))),
-    tabPanel("Properties",
-             splitLayout(
-                 cellArgs = list(style='white-space: normal;'),
-                 fluidPage(p("navbar"),p("spacer"),
-                           h2("General Properties"),
-                           p("General properties are not specific to any one module."),
-                           uiOutput("genProps")),
-                 fluidPage(p("navbar"),p("spacer"),
-                           h2("Module Properties"),
-                           # uiOutput("modProps"),
-                           p(),
-                           textOutput("modulePropsHeader"))
-             )
-    ),
-    tabPanel("Data Flow",
-             p("navbar"),p("spacer"),
-             p("This panel is a placeholder tab.")),
-    tabPanel("Help",
-             p("navbar"),p("spacer"),
-             includeMarkdown("HelpPage.md"))
+                     column(6, fileInput("existingConfig", label="Upload an existing config file", accept = c(".properties", ".config"), width = "100%")),
+                     column(6, actionButton("populateExistingConfig", "pull values", style = "margin-top: 25px;"))
+                 ),
+                 textInput("projectName", "Project name", value="myPipeline", placeholder = "new project name"),
+                 checkboxInput("include_standard_defaults", "include defaults"),
+                 checkboxInput("include_biolockj_version", "include BioLockJ version"),
+                 downloadButton("downloadData", "Save config file"),
+                 uiOutput("configText")),
+        tabPanel("Modules",
+                 fluidPage(    
+                     h2("BioModule Run Order"),
+                     fluidRow(
+                         column(5,selectInput("AddBioModule", 
+                                              "Select new BioModule", 
+                                              names(moduleInfo), 
+                                              selected = "GenMod",
+                                              width = '100%')),
+                         column(1, "AS", style = "margin-top: 30px;"),
+                         column(4, textInput("newAlias", "", 
+                                             placeholder = "alternative alias",
+                                             width = '100%')),
+                         column(2, actionButton("AddModuleButton", style = "margin-top: 20px;", "add to pipeline", class = "btn-success"))),
+                     uiOutput("orderModules"))),
+        tabPanel("Properties",
+                 splitLayout(
+                     cellArgs = list(style='white-space: normal;'),
+                     fluidPage(p("navbar"),p("spacer"),
+                               h2("General Properties"),
+                               p("General properties are not specific to any one module."),
+                               uiOutput("genProps")),
+                     fluidPage(p("navbar"),p("spacer"),
+                               h2("Module Properties"),
+                               # uiOutput("modProps"),
+                               p(),
+                               textOutput("modulePropsHeader"))
+                 )
+        ),
+        tabPanel("Data Flow",
+                 p("navbar"),p("spacer"),
+                 p("This panel is a placeholder tab.")),
+        tabPanel("Help",
+                 p("navbar"),p("spacer"),
+                 includeMarkdown("HelpPage.md"))
+    )
 )
 
 
