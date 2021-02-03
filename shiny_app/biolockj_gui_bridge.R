@@ -38,6 +38,10 @@ isValidAlias <- function(alias, existingAlia=c() ){
         message("An alias cannot contain spaces.")
         return(FALSE)
     }
+    if ( grepl(pattern="[^[:alnum:]_-]", alias) ){
+        message("An alias can only contain alphanumeric characters, '_', and '-'.")
+        return(FALSE)
+    }
     if (alias %in% existingAlia){
         message("Each alias must be unique. There is already a module called ", alias)
         return(FALSE)
