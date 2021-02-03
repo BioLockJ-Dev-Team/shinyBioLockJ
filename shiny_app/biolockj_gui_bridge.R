@@ -46,7 +46,7 @@ isValidAlias <- function(alias, existingAlia=c() ){
 }
 
 writeConfigProp <- function(propName, propVal=NULL, propType="string"){
-    if (is.null(propVal)){
+    if ( is.null(propVal) || is.na(propVal) ){
         line = ""
     }else if(trimws(propVal) == ""){
         line = paste(propName, "=", propVal)

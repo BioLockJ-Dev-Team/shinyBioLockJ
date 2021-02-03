@@ -7,7 +7,7 @@
 
 # render prop ui
 renderPropUi <- function(propName, prop, default){
-    message("Treating property ", propName, " as a ", prop$type, " property.")
+    # message("Treating property ", propName, " as a ", prop$type, " property.")
     if(prop$type == "boolean"){
         selected = ""
         if ( !is.null(default) ){
@@ -28,7 +28,6 @@ renderPropUi <- function(propName, prop, default){
                               value = default,
                               width = '60%')
     }else if(prop$type == "integer"){
-        message("Aha! propert " , propName, " is an integer type!")
         inputObj <- numericInput(inputId = propName,
                                  label = propName,
                                  value = default,
@@ -54,7 +53,7 @@ renderPropUi <- function(propName, prop, default){
                               width = '100%')
     }
     propUI <- tagList(em(prop$type),
-                      renderText(prop$description),
+                      renderText(prop$description, ),
                       inputObj)
     return(propUI)
 }

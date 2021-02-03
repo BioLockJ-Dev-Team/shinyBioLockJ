@@ -106,8 +106,8 @@ server <- function(input, output, session) {
     #############################         Core Objects         #########################################
     ####################################################################################################
     ## Use reactive objects as the single source of truth.
-    customProps <- reactiveValues()
-    values <- reactiveValues()
+    # customProps <- reactiveValues()
+    values <- reactiveValues(moduleList=list(), customProps=list())
     
     ### IMPORTANT !
     # GET the property values through this object; the pipelineProperties reactiveValues object
@@ -116,7 +116,6 @@ server <- function(input, output, session) {
     pipelineProperties <- do.call(reactiveValues, lapply(propInfo, function(prop){ prop$default }))
 
     # TODO: what is the most effective way to querry these states
-    hasCustomProps <- reactiveVal(FALSE) #TODO: reactive( length(isolate(input$orderModules)) > 0 )
     hasModules <- reactive( length(isolate(input$orderModules)) > 0 )
 
 
@@ -164,10 +163,17 @@ server <- function(input, output, session) {
                                                        column(5, textInput("customPropVal", "= value")),
                                                        column(3, actionButton("addCostomPropBtn", "add", style = "margin-top: 25px;"))
                                                    ),
-                                                   lapply(names(customProps), function(cp){
+                                                   lapply(names(values$customProps), function(cp){
                                                        message("creating option to remove property: ", cp)
-                                                       fluidRow(column(9, renderText(paste(cp, "=", customProps[[cp]]))),
-                                                                column(3, actionButton(paste0("rm-", cp), "remove")))
+                                                       buttonId=paste0("rm-", cp)
+                                                       customPropUi <- fluidRow(
+                                                           column(9, renderText(paste(cp, "=", values$customProps[[cp]]))),
+                                                           column(3, actionButton(buttonId, "remove")))
+                                                       observeEvent(input[[buttonId]],{
+                                                           values$customProps[[cp]] <- NULL
+                                                           updateTabsetPanel(session, "genPropsTabSet", selected = "ADD MORE")
+                                                       })
+                                                       customPropUi
                                                    })
         )
         argsList$selected = "input"
@@ -208,8 +214,7 @@ server <- function(input, output, session) {
     
     observeEvent(input$addCostomPropBtn, {
         message("The button was pushed! button: addCostomPropBtn")
-        hasCustomProps(TRUE)
-        customProps[[input$customPropName]] <- input$customPropVal
+        values$customProps[[input$customPropName]] <- input$customPropVal
         updateTabsetPanel(session, "genPropsTabSet", selected = "ADD MORE")
     })
     
@@ -251,8 +256,7 @@ server <- function(input, output, session) {
                         pipelineProperties[[propName]] <- vals[propName]
                     }
                 }else{
-                    hasCustomProps(TRUE)
-                    customProps[[propName]] <- vals[propName]
+                    values$customProps[[propName]] <- vals[propName]
                 }
                 
             }
@@ -274,10 +278,10 @@ server <- function(input, output, session) {
         lines = c(lines, values$moduleList)
         lines = c(lines, "")
         #
-        if ( hasCustomProps() ){
+        if ( length(values$customProps) > 0 ){
             lines = c(lines, "# Custom Properties")
-            for(cp in names(customProps)){
-                line = paste(cp, "=", customProps[[cp]])
+            for(cp in names(values$customProps)){
+                line = paste(cp, "=", values$customProps[[cp]])
                 lines = c(lines, line)
             }
             lines = c(lines, "")
@@ -285,9 +289,9 @@ server <- function(input, output, session) {
         #
         lines = c(lines, "# General Properties")
         for(p in names(propInfo)){
-            value = pipelineProperties[[p]] # input[[p]]
+            value = pipelineProperties[[p]]
             line = writeConfigProp(p, value, propInfo[[p]]$type)
-            if ( length(value) > 0 && nchar(value) > 0 ){
+            if ( !is.null(value) && !is.na(value) && length(value) > 0 && nchar(value) > 0 ){
                 notTheDefault = !is.null(propInfo[[p]]$default) && value != propInfo[[p]]$default
                 if ( is.null(propInfo[[p]]$default) || notTheDefault || input$include_standard_defaults ){
                     lines = c(lines, line)
