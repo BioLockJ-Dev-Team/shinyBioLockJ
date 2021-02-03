@@ -44,3 +44,20 @@ isValidAlias <- function(alias, existingAlia=c() ){
     }
     return(TRUE)
 }
+
+writeConfigProp <- function(propName, propVal=NULL, propType="string"){
+    if (is.null(propVal)){
+        line = ""
+    }else if(trimws(propVal) == ""){
+        line = paste(propName, "=", propVal)
+    }else{
+        if (propType == "boolean"){
+            result = "N" # any non-empty non-null value is treated as false
+            if (propVal==TRUE || propVal == "Y" || propVal == "TRUE") result = "Y"
+            line = paste(propName, "=", result)
+        }else{
+            line = paste(propName, "=", propVal)
+        }
+    }
+    line
+}

@@ -14,6 +14,7 @@ library(shinythemes)
 library(sortable)
 source('biolockj.R')
 source('biolockj_gui_bridge.R')
+source('propertiesDynamicUI.R')
 
 
 ### get initial BioLockJ info
@@ -34,6 +35,7 @@ groupedProps = split(names(propInfo), f=category)
 # map module short name to run line syntax
 moduleRunLines <- sapply(moduleInfo, function(mi){mi$usage})
 names(moduleRunLines) <- names(moduleInfo)
+
 
 ####################################################################################################
 #############################              UI              #########################################
@@ -147,14 +149,8 @@ server <- function(input, output, session) {
                      p(paste("See the user guide for more info about", groupName, "properties.", collaps=" ")),
                      lapply(group, function(propName){
                          prop = propInfo[[propName]]
-                         propUI <- tagList(em(prop$type),
-                                           renderText(prop$description),
-                                           textInput(inputId = propName,
-                                                     label = propName,
-                                                     value = isolate(pipelineProperties[[propName]]), #prop$default, 
-                                                     placeholder = prop$default))
+                         propUI <- renderPropUi(propName, prop, default=isolate(pipelineProperties[[propName]]))
                          observeEvent(input[[propName]],{
-                             message("I see the text input for ", propName, " has been updated.")
                              pipelineProperties[[propName]] <- input[[propName]]
                          })
                          propUI
@@ -285,10 +281,11 @@ server <- function(input, output, session) {
         if (input$include_biolockj_version){
             lines = c(lines, paste("# This config file was last updated while referencing BioLockJ version:", bljVer))
         }
+        #
         lines = c(lines, "")
         lines = c(lines, values$moduleList)
         lines = c(lines, "")
-        message("I'm looking at customProps...")
+        #
         if ( hasCustomProps() ){
             lines = c(lines, "# Custom Properties")
             for(cp in names(customProps)){
@@ -297,12 +294,11 @@ server <- function(input, output, session) {
             }
             lines = c(lines, "")
         }
-        
-        message("I'm looking at propInputBoxes...")
+        #
         lines = c(lines, "# General Properties")
         for(p in names(propInfo)){
             value = pipelineProperties[[p]] # input[[p]]
-            line = paste(p, "=", value)
+            line = writeConfigProp(p, value, propInfo[[p]]$type)
             if ( length(value) > 0 && nchar(value) > 0 ){
                 notTheDefault = !is.null(propInfo[[p]]$default) && value != propInfo[[p]]$default
                 if ( is.null(propInfo[[p]]$default) || notTheDefault || input$include_standard_defaults ){
