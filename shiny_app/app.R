@@ -252,33 +252,34 @@ server <- function(input, output, session) {
         exModOrder = existingLines[ grep("^#BioModule ", existingLines) ]
         if (length(exModOrder) > 0){
             values$moduleList <- exModOrder
+            values$removedModules <- list()
         }
     })
     
     populateProps <- reactive({
         existingLines <- existingLines()
         exProps = existingLines[ grep("^#", existingLines, invert = TRUE) ]
-        exProps = exProps[ grep("=", exProps) ]
-        splits = strsplit(exProps, split="=", fixed=TRUE)
-        splits = splits[which(sapply(splits, function(s){length(s) >= 2}))]
-        vals = sapply(splits, function(pair){trimws(paste0(pair[2:length(pair)], collapse=""))})
-        names(vals) = sapply(splits, function(pair){trimws(pair[1])})
-        if (length(vals) > 0 ){
-            for( propName in names(vals) ){
-                message("updating property value: ", propName, " = ", vals[propName])
-                # If propName is a genProp, set genProp
-                if ( propName %in% names(propInfo) ){
-                    # if input object is established, set through that
-                    # otherwise, set value in pipelineProperties object Directly
-                    if (!is.null(input[[propName]])){
-                        updateTextInput(session, propName, value = paste(vals[propName]))
+        if ( any(grepl("=", exProps)) ){
+            splits = strsplit(exProps, split="=", fixed=TRUE)
+            splits = splits[which(sapply(splits, function(s){length(s) >= 2}))]
+            vals = sapply(splits, function(pair){trimws(paste0(pair[2:length(pair)], collapse=""))})
+            names(vals) = sapply(splits, function(pair){trimws(pair[1])})
+            if (length(vals) > 0 ){
+                for( propName in names(vals) ){
+                    message("updating property value: ", propName, " = ", vals[propName])
+                    # If propName is a genProp, set genProp
+                    if ( propName %in% names(propInfo) ){
+                        # if input object is established, set through that
+                        # otherwise, set value in pipelineProperties object Directly
+                        if (!is.null(input[[propName]])){
+                            updateTextInput(session, propName, value = paste(vals[propName]))
+                        }else{
+                            pipelineProperties[[propName]] <- vals[propName]
+                        }
                     }else{
-                        pipelineProperties[[propName]] <- vals[propName]
+                        values$customProps[[propName]] <- vals[propName]
                     }
-                }else{
-                    values$customProps[[propName]] <- vals[propName]
                 }
-                
             }
         }
     })
