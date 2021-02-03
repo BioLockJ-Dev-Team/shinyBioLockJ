@@ -12,6 +12,7 @@ library(shiny)
 library(shinythemes)
 # install.packages("sortable")
 library(sortable)
+library(shinyFeedback)
 source('biolockj.R')
 source('biolockj_gui_bridge.R')
 source('propertiesDynamicUI.R')
@@ -60,16 +61,17 @@ ui <-  navbarPage(
              downloadButton("downloadData", "Save config file"),
              uiOutput("configText")),
     tabPanel("Modules",
-             fluidPage(
+             fluidPage(    
+                 shinyFeedback::useShinyFeedback(),
                  h2("BioModule Run Order"),
                  fluidRow(
-                     column(6,selectInput("AddBioModule", 
+                     column(5,selectInput("AddBioModule", 
                                           "Select new BioModule", 
                                           names(moduleInfo), 
                                           selected = "GenMod",
                                           width = '100%')),
                      column(1, "AS", style = "margin-top: 30px;"),
-                     column(3, textInput("newAlias", "", 
+                     column(4, textInput("newAlias", "", 
                                          placeholder = "alternative alias",
                                          width = '100%')),
                      column(2, actionButton("AddModuleButton", style = "margin-top: 20px;", "add to pipeline", class = "btn-success"))),
@@ -207,8 +209,12 @@ server <- function(input, output, session) {
     )
     
     observeEvent(input$AddModuleButton, {
-        message("I know the button got pushed")
         runLine = makeRunLine(input$AddBioModule, input$newAlias)
+        msg = capture.output({
+            goodAlias = isValidAlias(aliasFromRunline(runLine), aliases())
+        }, type="message")
+        shinyFeedback::feedbackDanger("newAlias", !goodAlias, msg)
+        req(goodAlias)
         values$moduleList <- c(isolate(input$orderModules), runLine)
         updateTextInput(session, "newAlias", value = "")
     })
@@ -327,6 +333,19 @@ server <- function(input, output, session) {
     })
     observeEvent(input$newAlias, {
         setDefaultAliasPlaceholder()
+    })
+    
+    aliases <- reactive({
+        sapply(values$moduleList, aliasFromRunline)
+    })
+    
+    # green for valid alias
+    observeEvent(input$newAlias, {
+        runLine = makeRunLine(input$AddBioModule, input$newAlias)
+        msg = capture.output({
+            goodAlias = isValidAlias(aliasFromRunline(runLine), aliases())
+        }, type="message")
+        shinyFeedback::feedbackSuccess("newAlias", goodAlias)
     })
     
     # Properties
