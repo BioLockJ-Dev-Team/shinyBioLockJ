@@ -76,7 +76,8 @@ ui <-  fluidPage(
                                              placeholder = "alternative alias",
                                              width = '100%')),
                          column(2, actionButton("AddModuleButton", style = "margin-top: 20px;", "add to pipeline", class = "btn-success"))),
-                     uiOutput("orderModules"))),
+                     uiOutput("manageModules"),
+                     actionButton("emptyModuleTrash", "Empty Trash"))),
         tabPanel("Properties",
                  splitLayout(
                      cellArgs = list(style='white-space: normal;'),
@@ -112,16 +113,13 @@ server <- function(input, output, session) {
     ####################################################################################################
     ## Use reactive objects as the single source of truth.
     # customProps <- reactiveValues()
-    values <- reactiveValues(moduleList=list(), customProps=list())
+    values <- reactiveValues(moduleList=list(), customProps=list(), removedModules=list())
     
     ### IMPORTANT !
     # GET the property values through this object; the pipelineProperties reactiveValues object
     # SET the property values through the input$[propName] object
     # an observeEvent ensures the flow of info from the input$ to the reactiveValues
     pipelineProperties <- do.call(reactiveValues, lapply(propInfo, function(prop){ prop$default }))
-
-    # TODO: what is the most effective way to querry these states
-    hasModules <- reactive( length(isolate(input$orderModules)) > 0 )
 
 
     ####################################################################################################
@@ -135,12 +133,20 @@ server <- function(input, output, session) {
     })
     
     # Modules
-    output$orderModules <- renderUI({
-        rank_list(
-            text = "Drag and drop to re-order",
-            labels = values$moduleList,
-            input_id = "orderModules",
-            options = sortable_options(multiDrag = TRUE))
+    output$manageModules <- renderUI({
+        bucket_list(
+            header="BioModule Run Order",
+            add_rank_list(
+                text = "Drag and drop to re-order",
+                labels = values$moduleList,
+                input_id = "orderModules",
+                options = sortable_options(multiDrag = TRUE)),
+            add_rank_list(
+                text="Trash",
+                labels = values$removedModules,
+                input_id = "trashModules",
+                options = sortable_options(multiDrag = TRUE)),
+            orientation="vertical")
     })
 
     
@@ -220,6 +226,11 @@ server <- function(input, output, session) {
         values$moduleList <- c(isolate(input$orderModules), runLine)
         updateTextInput(session, "newAlias", value = "")
     })
+    
+    observeEvent(input$emptyModuleTrash, {
+        values$removedModules <- list()
+    })
+    
     
     observeEvent(input$addCostomPropBtn, {
         message("The button was pushed! button: addCostomPropBtn")
@@ -321,6 +332,11 @@ server <- function(input, output, session) {
     observeEvent(input$orderModules, {
         values$moduleList <- input$orderModules
     })
+    
+    observeEvent(input$trashModules, {
+        values$removedModules <- input$trashModules
+    })
+    
     
     # placeholder of new alias shows the current implied alias
     showDefaultAlias <- reactive({
