@@ -92,8 +92,7 @@ ui <-  navbarPage(
              p("This panel is a placeholder tab.")),
     tabPanel("Help",
              p("navbar"),p("spacer"),
-             uiOutput("biolockjGitHub"),
-             uiOutput("biolockjUserGuide"))
+             includeMarkdown("HelpPage.md"))
 )
 
 
@@ -177,17 +176,6 @@ server <- function(input, output, session) {
     })
     
     output$modulePropsHeader <- renderText("The properties for a given module include the properties that are specific to that module, as well as any general properties that the module is known to reference.")
-    
-    # Help
-    output$biolockjGitHub <- renderUI({
-        ghUrl <- a("BioLockJ GitHub", href="https://github.com/BioLockJ-Dev-Team/BioLockJ")
-        tagList("The central BioLockJ resource is the GitHub repository:", ghUrl)
-    })
-    
-    output$biolockjUserGuide <- renderUI({
-        ugUrl <- a("BioLockJ userguide", href="https://biolockj.readthedocs.io/en/latest/")
-        tagList("See the BioLockJ user guide:", ugUrl)
-    })
     
     ####################################################################################################
     #############################       Button Actions         #########################################
