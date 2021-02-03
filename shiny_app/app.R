@@ -76,6 +76,7 @@ ui <-  navbarPage(
                  uiOutput("orderModules"))),
     tabPanel("Properties",
              splitLayout(
+                 cellArgs = list(style='white-space: normal;'),
                  fluidPage(p("navbar"),p("spacer"),
                            h2("General Properties"),
                            p("General properties are not specific to any one module."),
