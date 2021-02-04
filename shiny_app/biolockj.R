@@ -176,8 +176,10 @@ isValidProp <- function(property, value, module=NULL, external.modules=NULL ){
     }
     val = .callBioLockJApi(args, external.modules=external.modules)
     returnVal = NA
-    if (val=="true") returnVal = TRUE
-    if (val=="false") returnVal = FALSE
+    if (!is.null(val) && !is.na(val) && length(val)>0 ){
+        if (val=="true") returnVal = TRUE
+        if (val=="false") returnVal = FALSE
+    }
     return(returnVal)
 }
 
