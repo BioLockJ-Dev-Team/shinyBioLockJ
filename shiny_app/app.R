@@ -18,25 +18,17 @@ source('biolockj_gui_bridge.R')
 source('propertiesDynamicUI.R')
 
 
-### get initial BioLockJ info
-bljVer = biolockjVersion()
-propInfo <- propInfo()
-moduleInfo <- moduleInfo()
+####################################################################################################
+#############################      initial JAVA calls      #########################################
+####################################################################################################
+# Run these calls before starting so these bulk values are available.
+# IFF the user chooses to change the BioLockJ jar file, (which will a rare thing)
+# then the reactive values that store these are updated.
 
-# remove special properties that are set separately or 
-propInfo[["biolockj.version"]] <- NULL # only meant to be set by running biolockj
-propInfo[["pipeline.defaultProps"]] <- NULL # gui needs to actually upload files
-propInfo[["project.defaultProps"]] <- NULL # gui needs to actually upload files
-
-# break out properties into categories
-splits = strsplit(names(propInfo), split = ".", fixed = TRUE)
-category = sapply(splits, function(s){s[1]})
-groupedProps = split(names(propInfo), f=category)
-
-# map module short name to run line syntax
-moduleRunLines <- sapply(moduleInfo, function(mi){mi$usage})
-names(moduleRunLines) <- names(moduleInfo)
-
+initbljVer = biolockjVersion()
+initpropInfo <- propInfoSansSpecials()
+initmoduleInfo <- moduleInfo()
+initGenDefaults <- lapply(initpropInfo, function(prop){ prop$default })
 
 ####################################################################################################
 #############################              UI              #########################################
@@ -66,11 +58,7 @@ ui <-  fluidPage(
                  fluidPage(    
                      h2("BioModule Run Order"),
                      fluidRow(
-                         column(5,selectInput("AddBioModule", 
-                                              "Select new BioModule", 
-                                              names(moduleInfo), 
-                                              selected = "GenMod",
-                                              width = '100%')),
+                         column(5, uiOutput("selectModule")),
                          column(1, "AS", style = "margin-top: 30px;"),
                          column(4, textInput("newAlias", "", 
                                              placeholder = "alternative alias",
@@ -94,7 +82,8 @@ ui <-  fluidPage(
         ),
         tabPanel("Data Flow",
                  p("navbar"),p("spacer"),
-                 p("This panel is a placeholder tab.")),
+                 p("This panel is a placeholder tab."),
+                 actionButton("updateJar", "update", class="btn-danger")),
         tabPanel("Help",
                  p("navbar"),p("spacer"),
                  includeMarkdown("HelpPage.md"))
@@ -112,16 +101,40 @@ server <- function(input, output, session) {
     #############################         Core Objects         #########################################
     ####################################################################################################
     ## Use reactive objects as the single source of truth.
-    # customProps <- reactiveValues()
-    values <- reactiveValues(moduleList=list(), customProps=list(), removedModules=list())
     
-    ### IMPORTANT !
-    # GET the property values through this object; the pipelineProperties reactiveValues object
-    # SET the property values through the input$[propName] object
-    # an observeEvent ensures the flow of info from the input$ to the reactiveValues
-    pipelineProperties <- do.call(reactiveValues, lapply(propInfo, function(prop){ prop$default }))
+    values <- reactiveValues(moduleList=list(), 
+                             customProps=list(), 
+                             removedModules=list(),
+                             ### IMPORTANT !
+                             # GET the property values through this object; the pipelineProperties reactiveValues object
+                             # SET the property values through the input$[propName] object
+                             # an observeEvent ensures the flow of info from the input$ to the reactiveValues
+                             pipelineProperties=initGenDefaults )
+    
+    ### These are usually only run one time; 
+    # Start with the pre-run init* values.
+    # (TODO: add that dependency)
 
-
+    bljVer <- reactiveVal(initbljVer)
+    
+    allModuleInfo <- reactiveVal(initmoduleInfo)
+    
+    # map module short name to run line syntax
+    moduleRunLines <- reactiveVal(getModuleRunLines(initmoduleInfo))
+    
+    genPropInfo <- reactiveVal(initpropInfo)
+    
+    # break out properties into categories
+    groupedProps <- reactiveVal( groupPropsByCategory(initpropInfo) )
+    
+    observeEvent(input$updateJar, {
+        # TODO: show spinner or progress bar or something to let the user know that a delay is expected.
+        bljVer <- biolockjVersion()
+        allModuleInfo <- moduleInfo()
+        moduleRunLines <- getModuleRunLines(allModuleInfo())
+        genPropInfo <- propInfoSansSpecials()
+    })
+    
     ####################################################################################################
     #############################         Dynamic UI           #########################################
     ####################################################################################################
@@ -133,6 +146,14 @@ server <- function(input, output, session) {
     })
     
     # Modules
+    output$selectModule <- renderUI({
+        selectInput("AddBioModule",
+                    "Select new BioModule", 
+                    names(allModuleInfo()), 
+                    selected = "GenMod",
+                    width = '100%')
+    })
+    
     output$manageModules <- renderUI({
         bucket_list(
             header="BioModule Run Order",
@@ -152,15 +173,15 @@ server <- function(input, output, session) {
     
     # Properties
     output$genProps <- renderUI({
-        argsList =  lapply(as.list(names(groupedProps)), function(groupName){
-            group = groupedProps[[groupName]]
-            tabPanel(groupName, 
+        argsList =  lapply(as.list(names(groupedProps())), function(groupName){
+            group = groupedProps()[[groupName]]
+            tabPanel(groupName,
                      p(paste("See the user guide for more info about", groupName, "properties.", collaps=" ")),
                      lapply(group, function(propName){
-                         prop = propInfo[[propName]]
-                         propUI <- renderPropUi(propName, prop, default=isolate(pipelineProperties[[propName]]))
+                         prop = genPropInfo()[[propName]]
+                         propUI <- renderPropUi(propName, prop, default=isolate(values$pipelineProperties[[propName]]))
                          observeEvent(input[[propName]],{
-                             pipelineProperties[[propName]] <- input[[propName]]
+                             values$pipelineProperties[[propName]] <- input[[propName]]
                          })
                          propUI
                      }))
@@ -170,7 +191,7 @@ server <- function(input, output, session) {
                                                    p("Any property can reference the exact value of any other property, for example:"),
                                                    p("prop2 = build on ${prop1}"),
                                                    fluidRow(
-                                                       column(4, textInput("customPropName","property name")), 
+                                                       column(4, textInput("customPropName","property name")),
                                                        column(5, textInput("customPropVal", "= value")),
                                                        column(3, actionButton("addCostomPropBtn", "add", style = "margin-top: 25px;"))
                                                    ),
@@ -268,13 +289,13 @@ server <- function(input, output, session) {
                 for( propName in names(vals) ){
                     message("updating property value: ", propName, " = ", vals[propName])
                     # If propName is a genProp, set genProp
-                    if ( propName %in% names(propInfo) ){
+                    if ( propName %in% names(genPropInfo()) ){
                         # if input object is established, set through that
                         # otherwise, set value in pipelineProperties object Directly
                         if (!is.null(input[[propName]])){
                             updateTextInput(session, propName, value = paste(vals[propName]))
                         }else{
-                            pipelineProperties[[propName]] <- vals[propName]
+                            values$pipelineProperties[[propName]] <- vals[propName]
                         }
                     }else{
                         values$customProps[[propName]] <- vals[propName]
@@ -292,7 +313,7 @@ server <- function(input, output, session) {
     configLines <- reactive({
         lines = c()
         if (input$include_biolockj_version){
-            lines = c(lines, paste("# This config file was last updated while referencing BioLockJ version:", bljVer))
+            lines = c(lines, paste("# This config file was last updated while referencing BioLockJ version:", bljVer()))
         }
         #
         lines = c(lines, "")
@@ -309,12 +330,12 @@ server <- function(input, output, session) {
         }
         #
         lines = c(lines, "# General Properties")
-        for(p in names(propInfo)){
-            value = pipelineProperties[[p]]
-            line = writeConfigProp(p, value, propInfo[[p]]$type)
+        for(p in names(genPropInfo())){
+            value = values$pipelineProperties[[p]]
+            line = writeConfigProp(p, value, genPropInfo()[[p]]$type)
             if ( !is.null(value) && !is.na(value) && length(value) > 0 && nchar(value) > 0 ){
-                notTheDefault = !is.null(propInfo[[p]]$default) && value != propInfo[[p]]$default
-                if ( is.null(propInfo[[p]]$default) || notTheDefault || input$include_standard_defaults ){
+                notTheDefault = !is.null(genPropInfo()[[p]]$default) && value != genPropInfo()[[p]]$default
+                if ( is.null(genPropInfo()[[p]]$default) || notTheDefault || input$include_standard_defaults ){
                     lines = c(lines, line)
                 }
             }
@@ -372,6 +393,8 @@ server <- function(input, output, session) {
     # the renderUI function that creates the inputs.
     
 }
+
+
 
 # Run the application 
 shinyApp(ui = ui, server = server)

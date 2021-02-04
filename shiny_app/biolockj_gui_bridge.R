@@ -19,12 +19,15 @@ makeRunLine <- function(moduleName, alias=""){
 }
 
 aliasFromRunline <- function(line){
-    if (grepl(" AS ", line)){
-        parts = strsplit(line, " AS ", fixed=TRUE)[[1]]
-    }else{
-        parts = strsplit(line, ".", fixed=TRUE)[[1]]
+    alias=NA
+    if (!is.null(line) && !is.na(line) && length(line)>0){
+        if (grepl(" AS ", line)){
+            parts = strsplit(line, " AS ", fixed=TRUE)[[1]]
+        }else{
+            parts = strsplit(line, ".", fixed=TRUE)[[1]]
+        }
+        alias = trimws(parts[length(parts)])
     }
-    alias = trimws(parts[length(parts)])
     return(alias)
 }
 
@@ -65,3 +68,25 @@ writeConfigProp <- function(propName, propVal=NULL, propType="string"){
     }
     line
 }
+
+propInfoSansSpecials <- function(){
+    info = propInfo()
+    # remove special properties that are set separately or 
+    info[["biolockj.version"]] <- NULL # only meant to be set by running biolockj
+    info[["pipeline.defaultProps"]] <- NULL # gui needs to actually upload files
+    return(info)
+}
+
+groupPropsByCategory <- function(propInfo) { 
+    props = names(propInfo)
+    splits = strsplit(props, split = ".", fixed = TRUE)
+    category = sapply(splits, function(s){s[1]})
+    return(split(props, f=category))
+}
+
+getModuleRunLines <- function(moduleInfo){
+    moduleRunLines = sapply(moduleInfo, function(mi){mi$usage})
+    names(moduleRunLines) <- names(moduleInfo)
+    return(moduleRunLines)
+}
+
