@@ -43,12 +43,22 @@ ui <-  fluidPage(
         tabPanel("Home",
                  p("navbar"),p("spacer"),
                  h1("BioLockJ Pipeline Builder"),
+                 h4("Load from file"),
                  em("(optional)"),
                  p(em("When you pull values from an existing file, the values from the file will replace anything configured here.")),
                  fluidRow(
                      column(6, fileInput("existingConfig", label="Upload an existing config file", accept = c(".properties", ".config"), width = "100%")),
                      column(6, actionButton("populateExistingConfig", "pull values", style = "margin-top: 25px;"))
                  ),
+                 h4("Chain default properties"),
+                 em("(optional)"),
+                 p(em("The property 'pipeline.defaultProps=[file]' allows you to use property values from another file. That file may also include a reference to another file creating a chain.  When you run the pipeline, BioLockJ puts all the properties together. Properties defined in multiple files are set according the most recent value in the chain.")),
+                 fluidRow(
+                     column(6, fileInput("defaultPropsFiles", label="default properties files", accept = c(".properties"), width = "100%")),
+                     column(2, actionButton("chainDefaults", "chain defaults", style = "margin-top: 25px;")),
+                     column(4, actionButton("loadDefaultProps", "set as defaults", style = "margin-top: 25px;"))
+                 ),
+                 h4("Save to file"),
                  textInput("projectName", "Project name", value="myPipeline", placeholder = "new project name"),
                  checkboxInput("include_standard_defaults", "include defaults"),
                  checkboxInput("include_biolockj_version", "include BioLockJ version"),
