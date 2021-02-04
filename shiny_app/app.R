@@ -250,7 +250,7 @@ server <- function(input, output, session) {
     observeEvent(input$AddModuleButton, {
         runLine = makeRunLine(input$AddBioModule, input$newAlias)
         msg = capture.output({
-            goodAlias = isValidAlias(aliasFromRunline(runLine), aliases())
+            goodAlias = isValidAlias(aliasFromRunline(runLine), allActiveAliases())
         }, type="message")
         shinyFeedback::feedbackDanger("newAlias", !goodAlias, msg)
         req(goodAlias)
@@ -385,15 +385,21 @@ server <- function(input, output, session) {
         setDefaultAliasPlaceholder()
     })
     
-    aliases <- reactive({
+    pipelineAliases <- reactive({
         sapply(values$moduleList, aliasFromRunline)
     })
     
+    allActiveAliases <- reactive({
+        removedAliases <- sapply(values$removedModules, aliasFromRunline)
+        c(pipelineAliases(), removedAliases)
+    })
+    
     # green for valid alias
-    observeEvent(input$newAlias, {
+    observeEvent(showDefaultAlias(), {
+        shinyFeedback::hideFeedback("newAlias")
         runLine = makeRunLine(input$AddBioModule, input$newAlias)
         msg = capture.output({
-            goodAlias = isValidAlias(aliasFromRunline(runLine), aliases())
+            goodAlias = isValidAlias(aliasFromRunline(runLine), allActiveAliases())
         }, type="message")
         shinyFeedback::feedbackSuccess("newAlias", goodAlias)
     })
