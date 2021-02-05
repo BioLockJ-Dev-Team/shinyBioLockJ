@@ -111,9 +111,9 @@ ui <-  fluidPage(
                      sidebarPanel(
                          # width=5,
                          h3("command options"),
-                         checkboxInput("callJavaDirectly", "direct call to java", value=FALSE),
+                         checkboxInput("callJavaDirectly", "direct call to java", value=TRUE),
                          h4("flags"),
-                         checkboxInput("checkPrecheck", "--precheck", value=TRUE),
+                         checkboxInput("checkPrecheck", "--precheck-only", value=TRUE),
                          checkboxInput("checkUnused", "--unused-props", value=FALSE),
                          checkboxInput("checkDocker", "--docker", value=FALSE),
                          # checkboxInput("checkAws", "--aws", value=FALSE),
@@ -134,12 +134,12 @@ ui <-  fluidPage(
                      mainPanel(
                          # width=7,
                          h3("Test current configuration"),
-                         p("Pass this config file to BioLockJ to build the pipeline and check dependencies. This does not actually execute the pipeline (because we include the --precheck flag), but it rus the initial phases to look for potential problems."),
+                         p("Pass this config file to BioLockJ to build the pipeline and check dependencies. This does not actually execute the pipeline (because we include the --precheck-only flag), but it rus the initial phases to look for potential problems."),
                          h4("biolockj command:"),
                          verbatimTextOutput("precheckCommand"), 
                          actionButton("runPrecheckBtn", "Run Precheck", class = "btn-success"),
                          h4("command output:"),
-                         verbatimTextOutput("precheckOutput")
+                         uiOutput("precheckOutput")
                      )
                  )),
         tabPanel("Help",
@@ -173,7 +173,7 @@ server <- function(input, output, session) {
     # Start with the pre-run init* values.
     # (TODO: add that dependency)
 
-    jarFilePath <- reactiveVal("jar/BioLockJ.jar")
+    jarFilePath <- reactiveVal("BioLockJ/dist/BioLockJ.jar")
     
     bljVer <- reactiveVal(initbljVer)
     
@@ -334,7 +334,17 @@ server <- function(input, output, session) {
     observeEvent(input$runPrecheckBtn, {
         message("Running command:")
         message(precheckCommand())
-        precheckRestultText( system( precheckCommand(), intern=TRUE) )
+
+        if ( length(values$moduleList) == 0 ) validate("You need to include at least one module")
+        configFileName = paste0(input$projectName, ".config")
+        tempFileLoc = file.path(getwd(),"temp", configFileName)
+        message("writing to file: ", tempFileLoc)
+        writeLines(configLines(), tempFileLoc)
+        
+        command = gsub(pattern=configFileName, replacement = tempFileLoc, precheckCommand())
+        message("...actually running command:")
+        message(command)
+        precheckRestultText(system2("exec", args = command, stdout = TRUE, stderr = TRUE))
     })
     
     ####################################################################################################
@@ -424,7 +434,7 @@ server <- function(input, output, session) {
     # Precheck
     precheckCommand <- reactive({
         command = ifelse(input$callJavaDirectly, paste("java -jar", jarFilePath()), "biolockj")#"biolockj"
-        if (input$checkPrecheck) command = paste(command, "--precheck")
+        if (input$checkPrecheck) command = paste(command, "--precheck-only")
         if (input$checkUnused) command = paste(command, "--unused-props")
         if (input$checkDocker) command = paste(command, "--docker")
         # if (input$checkAws) command = paste(command, "--aws")
@@ -432,7 +442,9 @@ server <- function(input, output, session) {
         if (input$checkVerbose) command = paste(command, "--verbose")
         # if (input$extModsDir) command = paste(command, "--external-modules", input$extModsDir$name) #TODO this should use a path/to/dir
         # if (input$bljProjDir) command = paste(command, "--blj_proj", input$bljProjDir$name) #TODO this should use a path/to/dir
+        command = paste(command, "--blj_proj", file.path(getwd(), "BioLockJ", "pipelines"))
         command = paste0(command, " ", input$projectName, ".config")
+        # command = paste(command, "--help") #TODO
         command
     })
 
@@ -522,9 +534,10 @@ server <- function(input, output, session) {
     
     output$precheckCommand <- renderText(precheckCommand())
     
-    precheckRestultBottomLine <- reactiveVal("bottom line...")
-    precheckRestultText <- reactiveVal("results...")
-    output$precheckOutput <- renderText(precheckRestultText())
+    precheckRestultText <- reactiveVal(c("Precheck results will appear here."))
+    output$precheckOutput <- renderUI({
+        do.call(pre, as.list( precheckRestultText() ))
+    })
     
 }
 

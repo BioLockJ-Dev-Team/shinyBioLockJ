@@ -16,11 +16,11 @@
 # library(rjson)
 
 .bljJar <- function(){
-    return("jar/BioLockJ.jar")
+    return("BioLockJ/dist/BioLockJ.jar")
 }
 
 .bljProj <- function(){
-    return("pipelines")
+    return("BioLockJ/pipelines")
 }
 
 .getClassPath <- function(external.modules=NULL){

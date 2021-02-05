@@ -111,3 +111,13 @@ isInDocker <- function(){
     }
 }
 
+isBadPrecheckResponse <- function(response){
+    badKey = "There is a problem with this pipeline configuration."
+    any( grepl(badKey, response) )
+}
+
+isGoodPrecheckResponse <- function(response){
+    goodKey = "Precheck is complete. No problems were found in this pipeline configuration."
+    any( grepl(goodKey, response) )
+}
+

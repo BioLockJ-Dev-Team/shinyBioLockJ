@@ -1,8 +1,9 @@
 .DS_Store
 
 # Don't save local pipelines in git
-*/pipelines/*
+**/pipelines/*
 pipelines/*
+*/temp/*
 
 # The jar file is in the folder for publishing to shiny io
 shiny_app/BioLockJ/dist/BioLockJ.jar
