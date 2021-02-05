@@ -96,6 +96,7 @@ hasDockerCmd <- function(){
         message("Found docker version: ", dockerVersion)
         return(TRUE)
     }else{
+        message("No docker command.")
         return(FALSE)
     }
 }

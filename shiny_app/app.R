@@ -43,6 +43,9 @@ ui <-  fluidPage(
         theme = shinytheme("cerulean"),
         "BioLockJ",
         tabPanel("Home",
+                 tags$style(".shiny-input-container {margin-bottom: 0px} #existingConfig_progress { margin-bottom: 0px } .checkbox { margin-top: 0px}"),
+                 tags$style(".shiny-input-container {margin-bottom: 0px} #defaultPropsFiles_progress { margin-bottom: 0px } .checkbox { margin-top: 0px}"),
+                 tags$style(".shiny-input-container {margin-bottom: 0px} #projectRootDir_progress { margin-bottom: 0px } .checkbox { margin-top: 0px}"),
                  p("navbar"),p("spacer"),
                  h1("BioLockJ Pipeline Builder"),
                  h4("Load from file"),
@@ -60,6 +63,11 @@ ui <-  fluidPage(
                      column(2, actionButton("chainDefaults", "chain defaults", style = "margin-top: 25px;")),
                      column(4, actionButton("loadDefaultProps", "set as defaults", style = "margin-top: 25px;"))
                  ),
+                 h4("Project Root Directory"),
+                 em("(recommended)"),
+                 p(em("File paths can be shown relative to the project root directory.")),
+                 checkboxInput("checkRelPaths", "write relative file paths"),
+                 fileInput("projectRootDir", label="Project Root", width = "50%"),#TODO accept directory
                  h4("Save to file"),
                  textInput("projectName", "Project name", value="myPipeline", placeholder = "new project name"),
                  checkboxInput("include_standard_defaults", "include defaults"),
@@ -98,6 +106,7 @@ ui <-  fluidPage(
                      sidebarPanel(
                          # width=5,
                          h3("command options"),
+                         checkboxInput("callJavaDirectly", "direct call to java", value=FALSE),
                          h4("flags"),
                          checkboxInput("checkPrecheck", "--precheck", value=TRUE),
                          checkboxInput("checkUnused", "--unused-props", value=FALSE),
@@ -108,7 +117,7 @@ ui <-  fluidPage(
                          h4("arguments"),
                          fileInput("extModsDir", "External Modules", placeholder = "optional"),
                          # render text "contains X additional jar files
-                         fileInput("bljProjDir", "Project Directory", placeholder = "$BLJ_PROJ"),
+                         fileInput("bljProjDir", "Projects (Output) Directory", placeholder = "$BLJ_PROJ"),
                          h4("core"),
                          strong("BioLockJ version"),
                          p("Currently referencing BioLockJ version:"),
@@ -159,6 +168,8 @@ server <- function(input, output, session) {
     # Start with the pre-run init* values.
     # (TODO: add that dependency)
 
+    jarFilePath <- reactiveVal("jar/BioLockJ.jar")
+    
     bljVer <- reactiveVal(initbljVer)
     
     allModuleInfo <- reactiveVal(initmoduleInfo)
@@ -304,6 +315,7 @@ server <- function(input, output, session) {
         req(input$biolockjJarFile)
         # TODO: show spinner or progress bar or something to let the user know that a delay is expected.
         # update objects from java
+        jarFilePath(input$biolockjJarFile$datapath) #TODO: gather external path
         bljVer(biolockjVersion())
         allModuleInfo(moduleInfo()) 
         moduleRunLines(getModuleRunLines(allModuleInfo()))
@@ -406,7 +418,7 @@ server <- function(input, output, session) {
     
     # Precheck
     precheckCommand <- reactive({
-        command = "biolockj"
+        command = ifelse(input$callJavaDirectly, paste("java -jar", jarFilePath()), "biolockj")#"biolockj"
         if (input$checkPrecheck) command = paste(command, "--precheck")
         if (input$checkUnused) command = paste(command, "--unused-props")
         if (input$checkDocker) command = paste(command, "--docker")
