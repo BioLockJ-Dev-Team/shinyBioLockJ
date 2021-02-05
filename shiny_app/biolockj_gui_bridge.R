@@ -91,7 +91,9 @@ getModuleRunLines <- function(moduleInfo){
 }
 
 hasDockerCmd <- function(){
-    dockerVersion = system("docker --version", intern = TRUE)
+    dockerVersion = tryCatch({
+        system("docker --version", intern = TRUE)
+    }, error=function(...){""})
     if (grepl("Docker version", dockerVersion)){
         message("Found docker version: ", dockerVersion)
         return(TRUE)
