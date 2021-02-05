@@ -341,9 +341,13 @@ server <- function(input, output, session) {
         message("writing to file: ", tempFileLoc)
         writeLines(configLines(), tempFileLoc)
         
+        # short term cheats - TODO
         command = gsub(pattern=configFileName, replacement = tempFileLoc, precheckCommand())
+        defaultBljProj=paste("--precheck-only", "--blj_proj", file.path(getwd(), "BioLockJ", "pipelines"))
+        command = gsub("--precheck-only", defaultBljProj, command)
         message("...actually running command:")
         message(command)
+        #
         precheckRestultText(system2("exec", args = command, stdout = TRUE, stderr = TRUE))
     })
     
@@ -442,7 +446,6 @@ server <- function(input, output, session) {
         if (input$checkVerbose) command = paste(command, "--verbose")
         # if (input$extModsDir) command = paste(command, "--external-modules", input$extModsDir$name) #TODO this should use a path/to/dir
         # if (input$bljProjDir) command = paste(command, "--blj_proj", input$bljProjDir$name) #TODO this should use a path/to/dir
-        command = paste(command, "--blj_proj", file.path(getwd(), "BioLockJ", "pipelines"))
         command = paste0(command, " ", input$projectName, ".config")
         # command = paste(command, "--help") #TODO
         command
@@ -512,7 +515,7 @@ server <- function(input, output, session) {
         shinyjs::disable("checkPrecheck")
         shinyjs::disable("updateJar")
         if ( !hasDockerCmd() ) {
-            updateCheckboxInput("checkDocker", session, value = FALSE)
+            updateCheckboxInput(session, "checkDocker", value = FALSE)
             shinyjs::disable("checkDocker")
             if (isInDocker()){
                 shinyjs::disable("biolockjJarFile")
