@@ -119,6 +119,7 @@ ui <-  fluidPage(
                          # checkboxInput("checkAws", "--aws", value=FALSE),
                          checkboxInput("checkForground", "--foreground", value=FALSE),
                          checkboxInput("checkVerbose", "--verbose", value=FALSE),
+                         checkboxInput("checkMapBlj", "--blj", value=FALSE),
                          h4("arguments"),
                          fileInput("extModsDir", "External Modules", placeholder = "optional"),
                          # render text "contains X additional jar files
@@ -444,6 +445,7 @@ server <- function(input, output, session) {
         # if (input$checkAws) command = paste(command, "--aws")
         if (input$checkForground) command = paste(command, "--foreground")
         if (input$checkVerbose) command = paste(command, "--verbose")
+        if (input$checkMapBlj) command = paste(command, "--blj")
         # if (input$extModsDir) command = paste(command, "--external-modules", input$extModsDir$name) #TODO this should use a path/to/dir
         # if (input$bljProjDir) command = paste(command, "--blj_proj", input$bljProjDir$name) #TODO this should use a path/to/dir
         command = paste0(command, " ", input$projectName, ".config")
@@ -540,6 +542,15 @@ server <- function(input, output, session) {
     precheckRestultText <- reactiveVal(c("Precheck results will appear here."))
     output$precheckOutput <- renderUI({
         do.call(pre, as.list( precheckRestultText() ))
+    })
+    
+    observeEvent(input$checkDocker, {
+        if ( ! input$checkDocker) {
+            updateCheckboxInput(session, "checkMapBlj", value = FALSE)
+            shinyjs::disable("checkMapBlj")
+        }else{
+            shinyjs::enable("checkMapBlj")
+        }
     })
     
 }
