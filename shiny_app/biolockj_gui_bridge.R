@@ -90,3 +90,23 @@ getModuleRunLines <- function(moduleInfo){
     return(moduleRunLines)
 }
 
+hasDockerCmd <- function(){
+    dockerVersion = system("docker --version", intern = TRUE)
+    if (grepl("Docker version", dockerVersion)){
+        message("Found docker version: ", dockerVersion)
+        return(TRUE)
+    }else{
+        return(FALSE)
+    }
+}
+
+isInDocker <- function(){
+    if (file.exists("/.dockerenv")){
+        message("I must be running inside a docker container; because the /.dockerenv file exists.")
+        return(TRUE)
+    }else{
+        message("I must NOT be running inside a docker container; there is no /.dockerenv file")
+        return(FALSE)
+    }
+}
+

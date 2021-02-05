@@ -8,6 +8,7 @@
 #
 
 library(shiny)
+library(shinyjs)
 # install.packages("shinythemes")
 library(shinythemes)
 # install.packages("sortable")
@@ -36,6 +37,7 @@ initGenDefaults <- lapply(initpropInfo, function(prop){ prop$default })
 
 ui <-  fluidPage( 
     shinyFeedback::useShinyFeedback(),
+    shinyjs::useShinyjs(),
     navbarPage(
         position = "fixed-top",
         theme = shinytheme("cerulean"),
@@ -65,6 +67,7 @@ ui <-  fluidPage(
                  downloadButton("downloadData", "Save config file"),
                  uiOutput("configText")),
         tabPanel("Modules",
+                 p("navbar"),p("spacer"),
                  fluidPage(    
                      h2("BioModule Run Order"),
                      fluidRow(
@@ -88,17 +91,48 @@ ui <-  fluidPage(
                                # uiOutput("modProps"),
                                p(),
                                textOutput("modulePropsHeader"))
-                 )
-        ),
-        tabPanel("Data Flow",
+                 )),
+        tabPanel("Precheck",
                  p("navbar"),p("spacer"),
-                 p("This panel is a placeholder tab."),
-                 actionButton("updateJar", "update", class="btn-danger")),
+                 sidebarLayout(
+                     sidebarPanel(
+                         # width=5,
+                         h3("command options"),
+                         h4("flags"),
+                         checkboxInput("checkPrecheck", "--precheck", value=TRUE),
+                         checkboxInput("checkUnused", "--unused-props", value=FALSE),
+                         checkboxInput("checkDocker", "--docker", value=FALSE),
+                         # checkboxInput("checkAws", "--aws", value=FALSE),
+                         checkboxInput("checkForground", "--foreground", value=FALSE),
+                         checkboxInput("checkVerbose", "--verbose", value=FALSE),
+                         h4("arguments"),
+                         fileInput("extModsDir", "External Modules", placeholder = "optional"),
+                         # render text "contains X additional jar files
+                         fileInput("bljProjDir", "Project Directory", placeholder = "$BLJ_PROJ"),
+                         h4("core"),
+                         strong("BioLockJ version"),
+                         p("Currently referencing BioLockJ version:"),
+                         verbatimTextOutput("bljVersion"),
+                         fileInput("biolockjJarFile", "BioLockJ Jar File Location", accept=c(".jar")),
+                         actionButton("updateJar", "update jar location", class="btn-danger"),
+                         textOutput("textWarningOnUpdateJar")
+                     ),
+                     mainPanel(
+                         # width=7,
+                         h3("Test current configuration"),
+                         p("Pass this config file to BioLockJ to build the pipeline and check dependencies. This does not actually execute the pipeline (because we include the --precheck flag), but it rus the initial phases to look for potential problems."),
+                         h4("biolockj command:"),
+                         verbatimTextOutput("precheckCommand"), 
+                         actionButton("runPrecheckBtn", "Run Precheck", class = "btn-success"),
+                         h4("command output:"),
+                         verbatimTextOutput("precheckOutput")
+                     )
+                 )),
         tabPanel("Help",
                  p("navbar"),p("spacer"),
                  includeMarkdown("HelpPage.md"))
     )
-)
+) # end of UI
 
 
 ####################################################################################################
@@ -136,14 +170,6 @@ server <- function(input, output, session) {
     
     # break out properties into categories
     groupedProps <- reactiveVal( groupPropsByCategory(initpropInfo) )
-    
-    observeEvent(input$updateJar, {
-        # TODO: show spinner or progress bar or something to let the user know that a delay is expected.
-        bljVer <- biolockjVersion()
-        allModuleInfo <- moduleInfo()
-        moduleRunLines <- getModuleRunLines(allModuleInfo())
-        genPropInfo <- propInfoSansSpecials()
-    })
     
     ####################################################################################################
     #############################         Dynamic UI           #########################################
@@ -225,12 +251,17 @@ server <- function(input, output, session) {
     
     output$modulePropsHeader <- renderText("The properties for a given module include the properties that are specific to that module, as well as any general properties that the module is known to reference.")
     
+    # Precheck
+    
+
+    
     ####################################################################################################
     #############################       Button Actions         #########################################
     ####################################################################################################
     # define event handlers for buttons
     
     observeEvent(input$populateExistingConfig, {
+        input$AddModuleButton
         message("The button got pushed: populateExistingConfig")
         req( input$existingConfig )
         populateModules()
@@ -267,6 +298,26 @@ server <- function(input, output, session) {
         message("The button was pushed! button: addCostomPropBtn")
         values$customProps[[input$customPropName]] <- input$customPropVal
         updateTabsetPanel(session, "genPropsTabSet", selected = "ADD MORE")
+    })
+    
+    observeEvent(input$updateJar, {
+        req(input$biolockjJarFile)
+        # TODO: show spinner or progress bar or something to let the user know that a delay is expected.
+        # update objects from java
+        bljVer(biolockjVersion())
+        allModuleInfo(moduleInfo()) 
+        moduleRunLines(getModuleRunLines(allModuleInfo()))
+        genPropInfo(propInfoSansSpecials())
+        # TODO update defaults
+        # restore button to disabled
+        shinyjs::disable("updateJar")
+        output$textWarningOnUpdateJar <- renderText("")
+    })
+    
+    observeEvent(input$runPrecheckBtn, {
+        message("Running command:")
+        message(precheckCommand())
+        precheckRestultText( system( precheckCommand(), intern=TRUE) )
     })
     
     ####################################################################################################
@@ -353,6 +404,22 @@ server <- function(input, output, session) {
         lines
     })
     
+    # Precheck
+    precheckCommand <- reactive({
+        command = "biolockj"
+        if (input$checkPrecheck) command = paste(command, "--precheck")
+        if (input$checkUnused) command = paste(command, "--unused-props")
+        if (input$checkDocker) command = paste(command, "--docker")
+        # if (input$checkAws) command = paste(command, "--aws")
+        if (input$checkForground) command = paste(command, "--foreground")
+        if (input$checkVerbose) command = paste(command, "--verbose")
+        # if (input$extModsDir) command = paste(command, "--external-modules", input$extModsDir$name) #TODO this should use a path/to/dir
+        # if (input$bljProjDir) command = paste(command, "--blj_proj", input$bljProjDir$name) #TODO this should use a path/to/dir
+        command = paste0(command, " ", input$projectName, ".config")
+        command
+    })
+
+    
     
     ####################################################################################################
     #############################           Synchrony          #########################################
@@ -407,6 +474,40 @@ server <- function(input, output, session) {
     # Properties
     # The essential observers that keep the pipelineProperties synchronized are defined within 
     # the renderUI function that creates the inputs.
+    
+    # Precheck
+    output$bljVersion <- renderText( bljVer() )
+    
+    observe({
+        # input$AddBioModule
+        shinyjs::disable("checkPrecheck")
+        shinyjs::disable("updateJar")
+        if ( !hasDockerCmd() ) {
+            updateCheckboxInput("checkDocker", session, value = FALSE)
+            shinyjs::disable("checkDocker")
+            if (isInDocker()){
+                shinyjs::disable("biolockjJarFile")
+            }
+        }
+    })
+    
+    observeEvent(input$extModsDir, {
+        shinyjs::enable("updateJar")
+        output$textWarningOnUpdateJar <- renderText("This could cause major changes.")
+    })
+    
+    observeEvent(input$biolockjJarFile, {
+        output$textWarningOnUpdateJar <- renderText("")
+        req(input$biolockjJarFile)
+        shinyjs::enable("updateJar")
+        output$textWarningOnUpdateJar <- renderText("This could cause major changes.")
+    })
+    
+    output$precheckCommand <- renderText(precheckCommand())
+    
+    precheckRestultBottomLine <- reactiveVal("bottom line...")
+    precheckRestultText <- reactiveVal("results...")
+    output$precheckOutput <- renderText(precheckRestultText())
     
 }
 
