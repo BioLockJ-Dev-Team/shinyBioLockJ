@@ -54,6 +54,7 @@ renderPropUi <- function(propName, prop, default){
     }
     propUI <- tagList(em(prop$type),
                       renderText(prop$description, ),
-                      inputObj)
+                      inputObj,
+                      br())
     return(propUI)
 }
