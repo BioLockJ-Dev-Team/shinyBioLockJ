@@ -98,7 +98,21 @@ ui <-  fluidPage(
                      fluidPage(p("navbar"),p("spacer"),
                                h2("General Properties"),
                                p("General properties are not specific to any one module."),
-                               uiOutput("genProps")),
+                               tabsetPanel(
+                                   tabPanel(
+                                       "Backbone Properties",
+                                       uiOutput("genProps")),
+                                   tabPanel("Custom Properties",
+                                            p("Add custom properties here. All property names must be unique."),
+                                            p("Any property can reference the exact value of any other property, for example:"),
+                                            p("prop2 = build on ${prop1}"),
+                                            fluidRow(
+                                                column(4, textInput("customPropName","property name")),
+                                                column(5, textInput("customPropVal", "= value")),
+                                                column(3, actionButton("addCostomPropBtn", "add", style = "margin-top: 25px;"))),
+                                            h5("Current custom properties:"),
+                                            uiOutput("showCustomProps"))
+                               )),
                      fluidPage(p("navbar"),p("spacer"),
                                h2("Module Properties"),
                                # uiOutput("modProps"),
@@ -168,7 +182,7 @@ server <- function(input, output, session) {
                              # GET the property values through this object; the pipelineProperties reactiveValues object
                              # SET the property values through the input$[propName] object
                              # an observeEvent ensures the flow of info from the input$ to the reactiveValues
-                             pipelineProperties=initGenDefaults )
+                             pipelineProperties=initGenDefaults)
     
     ### These are usually only run one time; 
     # Start with the pre-run init* values.
@@ -239,31 +253,28 @@ server <- function(input, output, session) {
                          propUI
                      }))
         })
-        argsList[[length(argsList)+1]] <- tabPanel("ADD MORE",
-                                                   p("Add custom properties here. All property names must be unique."),
-                                                   p("Any property can reference the exact value of any other property, for example:"),
-                                                   p("prop2 = build on ${prop1}"),
-                                                   fluidRow(
-                                                       column(4, textInput("customPropName","property name")),
-                                                       column(5, textInput("customPropVal", "= value")),
-                                                       column(3, actionButton("addCostomPropBtn", "add", style = "margin-top: 25px;"))
-                                                   ),
-                                                   lapply(names(values$customProps), function(cp){
-                                                       message("creating option to remove property: ", cp)
-                                                       buttonId=paste0("rm-", cp)
-                                                       customPropUi <- fluidRow(
-                                                           column(9, renderText(paste(cp, "=", values$customProps[[cp]]))),
-                                                           column(3, actionButton(buttonId, "remove")))
-                                                       observeEvent(input[[buttonId]],{
-                                                           values$customProps[[cp]] <- NULL
-                                                           updateTabsetPanel(session, "genPropsTabSet", selected = "ADD MORE")
-                                                       })
-                                                       customPropUi
-                                                   })
-        )
         argsList$selected = "input"
         argsList$id = "genPropsTabSet"
         do.call(tabsetPanel, argsList)
+    })
+    
+    output$showCustomProps <- renderUI({
+        if (length(values$customProps) > 0 ){
+            lapply(names(values$customProps), function(cp){
+                message("creating option to remove property: ", cp)
+                buttonId=paste0("rm-", cp)
+                customPropUi <- fluidRow(
+                    column(9, renderPrint(cat(paste(cp, "=", values$customProps[[cp]])))),
+                    column(3, actionButton(buttonId, "remove")))
+                observeEvent(input[[buttonId]],{
+                    values$customProps[[cp]] <- NULL
+                    updateTabsetPanel(session, "genPropsTabSet", selected = "ADD MORE")
+                })
+                customPropUi
+            })
+        }else{
+            em("none")
+        }
     })
     
     output$modulePropsHeader <- renderText("The properties for a given module include the properties that are specific to that module, as well as any general properties that the module is known to reference.")
@@ -314,7 +325,8 @@ server <- function(input, output, session) {
     observeEvent(input$addCostomPropBtn, {
         message("The button was pushed! button: addCostomPropBtn")
         values$customProps[[input$customPropName]] <- input$customPropVal
-        updateTabsetPanel(session, "genPropsTabSet", selected = "ADD MORE")
+        updateTextInput(session, "customPropName", value = "")
+        updateTextInput(session, "customPropVal", value = "")
     })
     
     observeEvent(input$updateJar, {
