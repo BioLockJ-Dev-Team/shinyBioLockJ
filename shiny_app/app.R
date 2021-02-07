@@ -56,14 +56,14 @@ ui <-  fluidPage(
                          p(em("File paths can be shown relative to the project root directory.")),
                          checkboxInput("checkRelPaths", "write relative file paths"),
                          fileInput("projectRootDir", label="Project Root", width = "100%"),#TODO accept directory
-                         h4("Chain default properties"),
-                         em("(optional)"),
-                         p(em("The property 'pipeline.defaultProps=[file]' allows you to use property values from another file. That file may also include a reference to another file creating a chain.  When you run the pipeline, BioLockJ puts all the properties together. Properties defined in multiple files are set according the most recent value in the chain.")),
-                         fileInput("defaultPropsFiles", label="default properties files", accept = c(".properties"), multiple = TRUE, width = "100%"),
-                         fluidRow(
-                             column(5, shinyjs::disabled(actionButton("chainDefaults", "chain defaults", width = '100%'))),
-                             column(5, shinyjs::disabled(actionButton("loadDefaultProps", "set as defaults", width = '100%')))
-                         ),
+                         # h4("Chain default properties"),
+                         # em("(optional)"),
+                         # p(em("The property 'pipeline.defaultProps=[file]' allows you to use property values from another file. That file may also include a reference to another file creating a chain.  When you run the pipeline, BioLockJ puts all the properties together. Properties defined in multiple files are set according the most recent value in the chain.")),
+                         # fileInput("defaultPropsFiles", label="default properties files", accept = c(".properties"), multiple = TRUE, width = "100%"),
+                         # fluidRow(
+                         #     column(5, shinyjs::disabled(actionButton("chainDefaults", "chain defaults", width = '100%'))),
+                         #     column(5, shinyjs::disabled(actionButton("loadDefaultProps", "set as defaults", width = '100%')))
+                         # ),
                          h4("Load from file"),
                          em("(optional)"),
                          p(em("When you pull values from an existing file, the values from the file will replace anything configured here.")),
@@ -79,6 +79,26 @@ ui <-  fluidPage(
                          downloadButton("downloadData", "Save config file"),
                          uiOutput("configText")))
         ),
+        tabPanel("Defaults",
+                 p("navbar"),p("spacer"),
+                 fluidPage(
+                     h2("Chain default properties"),
+                     em("(optional)"),
+                     p(em("The property 'pipeline.defaultProps=[file]' allows you to use property values from another file. That file may also include a reference to another file creating a chain.  When you run the pipeline, BioLockJ puts all the properties together. Properties defined in multiple files are set according the most recent value in the chain.")),
+                     h4("Locate defaults"),
+                     em("This does not affect your configuration."),
+                     br(),br(),
+                     fileInput("defaultPropsFiles", label="upload default properties files", accept = c(".properties")),
+                     checkboxInput("ignoreChain", "ignore pipeline.defaultProps in this file", value=FALSE),
+                     tableOutput("chainableFiles"),
+                     h4("Select defaults"),
+                     em("This is what sets the pipeline.defaultProps for your current pipeline, and the defaults that are reflected throughout this configuration."),
+                     fluidRow(
+                         column(6, shinyjs::disabled(selectInput("pipeline.defaultProps", "pipeline.defaultProps", choices = c(""), multiple=TRUE))),
+                         column(6, shinyjs::disabled(actionButton("chainDefaults", "update chain", style = "margin-top: 20px;")))),
+                     tableOutput("chainedFiles"),
+                     shinyjs::disabled(actionButton("loadDefaultProps", "set as defaults")),
+                 )),
         tabPanel("Modules",
                  p("navbar"),p("spacer"),
                  fluidPage(    
@@ -190,9 +210,10 @@ server <- function(input, output, session) {
                              moduleProperties=modulePerProp(initmoduleInfo))
     
     defaults <- reactiveValues(
-        defaultPropsChain = list(standard=list()),
+        defaultPropsChain = list(standard=NA),
         defaultPropsList = list(standard=initGenDefaults),
         values = initGenDefaults,
+        uploadedFiles = data.frame(name=c(), size=c(), type=c(), datapath=c()),
         activeFiles = c()
     )
 
@@ -253,6 +274,35 @@ server <- function(input, output, session) {
     # Home
     output$configText <- renderUI({
         do.call(pre, as.list(configLines()))
+    })
+    
+    # Defaults
+    output$chainedFiles <- renderTable({
+        req(input$pipeline.defaultProps)
+        chainInfo = orderDefaultPropFiles(start=input$pipeline.defaultProps, chain=defaults$defaultPropsChain)
+        if (length(chainInfo$dangling) > 0){
+            shinyjs::disable("loadDefaultProps")
+        }else{
+            shinyjs::enable("loadDefaultProps")
+        }
+        chainLinks = intersect(chainInfo$chained, names(defaults$defaultPropsChain))
+        df = stack(defaults$defaultPropsChain[chainLinks])
+        names(df) = c("linksTo", "file")
+        df[,c("file", "linksTo")]
+
+    })
+    
+    output$chainableFiles <- renderTable({
+        message("defaults[['defaultPropsChain']] : ", defaults[["defaultPropsChain"]])
+        message("defaults[['defaultPropsChain']] : ", str(defaults[["defaultPropsChain"]]))
+        if( length( defaults$defaultPropsChain ) > 0 ){
+            from = defaults$defaultPropsChain
+        }else{
+            from = list(file="the pipeline.defaultProps value from this file", file2="the pipeline.defaultProps value from that file")
+        }
+        df = stack(from)
+        names(df) = c("linksTo", "file")
+        df[,c("file", "linksTo")]
     })
     
     # Modules
@@ -348,26 +398,44 @@ server <- function(input, output, session) {
     observeEvent(input$defaultPropsFiles,{
         message("Event: input$defaultPropsFiles")
         req(input$defaultPropsFiles)
-        for (i in 1:length(input$defaultPropsFiles$name)){
+        for (i in 1:nrow(input$defaultPropsFiles)){
             props = readBljProps(readLines(input$defaultPropsFiles$datapath[i]))
-            message("have file ", input$defaultPropsFiles$name[i], " at location: ", input$defaultPropsFiles$datapath[i])
             chainsTo = props["pipeline.defaultProps"]
-            if ( !is.null(chainsTo)){
+            if ( is.null(chainsTo) || is.na(chainsTo) || chainsTo=="" || input$ignoreChain){
+                defaults$defaultPropsChain[input$defaultPropsFiles$name[i]] = defaults$defaultPropsChain[["standard"]]
+            }else{
                 props = props[names(props) != "pipeline.defaultProps"]
-                defaults$defaultPropsChain[[input$defaultPropsFiles$name[i]]] = chainsTo
-                message("file ", input$defaultPropsFiles$name[i], "; chains to file: ", chainsTo)
+                defaults$defaultPropsChain[[input$defaultPropsFiles$name[i]]] = parseListProp( chainsTo )
             }
             defaults$defaultPropsList[[input$defaultPropsFiles$name[i]]] = props
         }
+        wasSelected = input$pipeline.defaultProps
+        defaults$uploadedFiles <- rbind(defaults$uploadedFiles, input$defaultPropsFiles)
+        updateSelectInput(session, "pipeline.defaultProps", choices = defaults$uploadedFiles$name, selected=wasSelected)
+        shinyjs::enable("pipeline.defaultProps")
+        shinyjs::enable("chainDefaults")
+        updateCheckboxInput(session, "ignoreChain", value=FALSE)
+    })
+    
+    observeEvent(input$pipeline.defaultProps, {
         shinyjs::enable("chainDefaults")
     })
     
     observeEvent(input$chainDefaults, {
         message("Pushed button: chainDefaults")
-        # scan for defaultProps property in uploaded file
-        # if all default props are uploaded, then make set-as-defaults button active
-        # if any default props files are still needed, 
-        shinyjs::disable("chainDefaults")
+        # chainInfo = orderDefaultPropFiles(input$pipeline.defaultProps, defaults$defaultPropsChain)
+        # if (length(chainInfo$dangling) > 0){
+        #     validate(cat("Cannot find file(s) ", paste(chainInfo$missing, collapse=", "), " referenced by ", info$dangling))
+        # }else{
+        #     chainLinksList = intersect(chainInfo$chained, names(defaults$defaultPropsChain))
+        #     df = stack(defaults$defaultPropsChain[chainLinks])
+        #     shinyjs::enable("loadDefaultProps")
+        # }
+        # 
+        # # scan for defaultProps property in uploaded file
+        # # if all default props are uploaded, then make set-as-defaults button active
+        # # if any default props files are still needed, 
+        # shinyjs::disable("chainDefaults")
     })
     
     observeEvent(input$loadDefaultProps, {
