@@ -59,10 +59,10 @@ ui <-  fluidPage(
                          h4("Chain default properties"),
                          em("(optional)"),
                          p(em("The property 'pipeline.defaultProps=[file]' allows you to use property values from another file. That file may also include a reference to another file creating a chain.  When you run the pipeline, BioLockJ puts all the properties together. Properties defined in multiple files are set according the most recent value in the chain.")),
-                         fileInput("defaultPropsFiles", label="default properties files", accept = c(".properties"), width = "100%"),
+                         fileInput("defaultPropsFiles", label="default properties files", accept = c(".properties"), multiple = TRUE, width = "100%"),
                          fluidRow(
-                             column(5, actionButton("chainDefaults", "chain defaults", width = '100%')),
-                             column(5, actionButton("loadDefaultProps", "set as defaults", width = '100%'))
+                             column(5, shinyjs::disabled(actionButton("chainDefaults", "chain defaults", width = '100%'))),
+                             column(5, shinyjs::disabled(actionButton("loadDefaultProps", "set as defaults", width = '100%')))
                          ),
                          h4("Load from file"),
                          em("(optional)"),
@@ -111,7 +111,11 @@ ui <-  fluidPage(
                                                 column(5, textInput("customPropVal", "= value")),
                                                 column(3, actionButton("addCostomPropBtn", "add", style = "margin-top: 25px;"))),
                                             h5("Current custom properties:"),
-                                            uiOutput("showCustomProps"))
+                                            uiOutput("showCustomProps"),
+                                            br(),
+                                            h5("Custom values in default properties files:"),
+                                            em("These are not included as part of the current config file."),
+                                            uiOutput("showDefaultCustomProps"))
                                )),
                      fluidPage(p("navbar"),p("spacer"),
                                h2("Module Properties"),
@@ -182,7 +186,46 @@ server <- function(input, output, session) {
                              # GET the property values through this object; the pipelineProperties reactiveValues object
                              # SET the property values through the input$[propName] object
                              # an observeEvent ensures the flow of info from the input$ to the reactiveValues
-                             pipelineProperties=initGenDefaults)
+                             pipelineProperties=initGenDefaults, # TODO: maybe change name to backboneProperties
+                             moduleProperties=modulePerProp(initmoduleInfo))
+    
+    defaults <- reactiveValues(
+        defaultPropsChain = list(standard=list()),
+        defaultPropsList = list(standard=initGenDefaults),
+        values = initGenDefaults,
+        activeFiles = c()
+    )
+
+    customDefaults <- reactive({
+        df = stack( sapply(names(defaults$values), function(p){strsplit(p, ".", fixed=TRUE)[[1]][1]}), stringsAsFactors=FALSE)
+        names(df) = c("prefix", "propName")
+        df$prefix = as.character(df$prefix)
+        df$propName = as.character(df$propName)
+        message("df has ", nrow(df), " rows.")
+        #
+        # general property defaults are reflected in general property ui
+        df = df[! df$propName %in% names(values$pipelineProperties),]
+        message("After removing general props, df has ", nrow(df), " rows.")
+        #
+        # mdoule property defaults are reflected in ui when that module is added
+        df = df[! df$propName %in% names( modulePerProp( allModuleInfo() )),]
+        message("After removing module props, df has ", nrow(df), " rows.")
+        #
+        # module overrides that use the module class name are reflected in module property ui
+        df = df[! df$prefix %in% names( allModuleInfo() ),]
+        message("After removing module-override props, df has ", nrow(df), " rows.")
+        #
+        # module overrides that use the module's alias are shown in the module ui with the matching alias 
+        # IFF the alias is an alias in the current pipline
+        df = df[! df$prefix %in% allActiveAliases(),]
+        message("after removing alias-overrides, df has ", nrow(df), " rows.")
+        #
+        # not included in the current config's custom props
+        df = df[! df$prefix %in% names(values$customProps),]
+        message("after removing current custom props, df has ", nrow(df), " rows.")
+        #
+        defaults$values[df$propName]
+    })
     
     ### These are usually only run one time; 
     # Start with the pre-run init* values.
@@ -277,6 +320,20 @@ server <- function(input, output, session) {
         }
     })
     
+    output$showDefaultCustomProps <- renderUI({
+        if (length(customDefaults()) > 0 ){
+            lapply(names(customDefaults()), function(cp){
+                buttonId=paste0("rm-", cp)
+                customPropUi <- fluidRow(
+                    column(9, renderPrint(cat(paste(cp, "=", customDefaults()[[cp]])))),
+                    column(3, renderPrint(cat(""))))
+                customPropUi
+            })
+        }else{
+            list(br(),em("none"))
+        }
+    })
+    
     output$modulePropsHeader <- renderText("The properties for a given module include the properties that are specific to that module, as well as any general properties that the module is known to reference.")
     
     # Precheck
@@ -287,6 +344,35 @@ server <- function(input, output, session) {
     #############################       Button Actions         #########################################
     ####################################################################################################
     # define event handlers for buttons
+    
+    observeEvent(input$defaultPropsFiles,{
+        message("Event: input$defaultPropsFiles")
+        req(input$defaultPropsFiles)
+        for (i in 1:length(input$defaultPropsFiles$name)){
+            props = readBljProps(readLines(input$defaultPropsFiles$datapath[i]))
+            message("have file ", input$defaultPropsFiles$name[i], " at location: ", input$defaultPropsFiles$datapath[i])
+            chainsTo = props["pipeline.defaultProps"]
+            if ( !is.null(chainsTo)){
+                props = props[names(props) != "pipeline.defaultProps"]
+                defaults$defaultPropsChain[[input$defaultPropsFiles$name[i]]] = chainsTo
+                message("file ", input$defaultPropsFiles$name[i], "; chains to file: ", chainsTo)
+            }
+            defaults$defaultPropsList[[input$defaultPropsFiles$name[i]]] = props
+        }
+        shinyjs::enable("chainDefaults")
+    })
+    
+    observeEvent(input$chainDefaults, {
+        message("Pushed button: chainDefaults")
+        # scan for defaultProps property in uploaded file
+        # if all default props are uploaded, then make set-as-defaults button active
+        # if any default props files are still needed, 
+        shinyjs::disable("chainDefaults")
+    })
+    
+    observeEvent(input$loadDefaultProps, {
+        message("Pushed button: loadDefaultProps")
+    })
     
     observeEvent(input$populateExistingConfig, {
         input$AddModuleButton
@@ -338,7 +424,7 @@ server <- function(input, output, session) {
         allModuleInfo(moduleInfo()) 
         moduleRunLines(getModuleRunLines(allModuleInfo()))
         genPropInfo(propInfoSansSpecials())
-        # TODO update defaults
+        # TODO update defaults, including values of defaults$*[["standard"]]
         # restore button to disabled
         shinyjs::disable("updateJar")
         output$textWarningOnUpdateJar <- renderText("")
@@ -383,28 +469,21 @@ server <- function(input, output, session) {
     })
     
     populateProps <- reactive({
-        existingLines <- existingLines()
-        exProps = existingLines[ grep("^#", existingLines, invert = TRUE) ]
-        if ( any(grepl("=", exProps)) ){
-            splits = strsplit(exProps, split="=", fixed=TRUE)
-            splits = splits[which(sapply(splits, function(s){length(s) >= 2}))]
-            vals = sapply(splits, function(pair){trimws(paste0(pair[2:length(pair)], collapse=""))})
-            names(vals) = sapply(splits, function(pair){trimws(pair[1])})
-            if (length(vals) > 0 ){
-                for( propName in names(vals) ){
-                    message("updating property value: ", propName, " = ", vals[propName])
-                    # If propName is a genProp, set genProp
-                    if ( propName %in% names(genPropInfo()) ){
-                        # if input object is established, set through that
-                        # otherwise, set value in pipelineProperties object Directly
-                        if (!is.null(input[[propName]])){
-                            updateTextInput(session, propName, value = paste(vals[propName]))
-                        }else{
-                            values$pipelineProperties[[propName]] <- vals[propName]
-                        }
+        vals = readBljProps( existingLines() )
+        if (length(vals) > 0 ){
+            for( propName in names(vals) ){
+                message("updating property value: ", propName, " = ", vals[propName])
+                # If propName is a genProp, set genProp
+                if ( propName %in% names(genPropInfo()) ){
+                    # if input object is established, set through that
+                    # otherwise, set value in pipelineProperties object Directly
+                    if (!is.null(input[[propName]])){
+                        updateTextInput(session, propName, value = paste(vals[propName]))
                     }else{
-                        values$customProps[[propName]] <- vals[propName]
+                        values$pipelineProperties[[propName]] <- vals[propName]
                     }
+                }else{
+                    values$customProps[[propName]] <- vals[propName]
                 }
             }
         }

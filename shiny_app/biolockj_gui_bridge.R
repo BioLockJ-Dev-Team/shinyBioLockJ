@@ -123,3 +123,40 @@ isGoodPrecheckResponse <- function(response){
     any( grepl(goodKey, response) )
 }
 
+getModuleOverrideProp <- function(moduleAlias, propName){
+    parts=strsplit(propName, split=".", fixed=TRUE)[[1]]
+    parts[1] = moduleAlias
+    return( paste(parts, collapse=".") )
+}
+
+modulePerProp <- function(moduleInfo=moduleInfo()){
+    # Returns a list of properties, each element is a vector of module names 
+    # giving the modules that use that property
+    a = sapply(initmoduleInfo, function(mi){names(mi$properties)})
+    d1=stack(a)
+    return(split(as.character(d1$ind), d1$values))
+}
+
+isSharedProp <- function(propMods=modulePerProp(), propName, includeMods=unique(unlist(propMods))){
+    # Determines if the given property is used by more than one of the modules in the pipeline.
+    # propMods - output of modulePerProp
+    # propName - property in question
+    # includeMods - the modules in the current pipeline
+    propsMods = propMods[[propName]]
+    countMods = intersect(propsMods, includeMods)
+    if (length(countMods) > 1 ) return(TRUE)
+    else( return(FALSE) )
+}
+
+readBljProps <- function(existingLines){
+    exProps = existingLines[ grep("^#", existingLines, invert = TRUE) ]
+    if ( any(grepl("=", exProps)) ){
+        splits = strsplit(exProps, split="=", fixed=TRUE)
+        splits = splits[which(sapply(splits, function(s){length(s) >= 2}))]
+        vals = sapply(splits, function(pair){trimws(paste0(pair[2:length(pair)], collapse=""))})
+        names(vals) = sapply(splits, function(pair){trimws(pair[1])})
+        return(vals)
+    }else{
+        return(c())
+    }
+}
