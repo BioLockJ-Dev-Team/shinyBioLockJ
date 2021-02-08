@@ -62,6 +62,10 @@ writeConfigProp <- function(propName, propVal=NULL, propType="string"){
             result = "N" # any non-empty non-null value is treated as false
             if (propVal==TRUE || propVal == "Y" || propVal == "TRUE") result = "Y"
             line = paste(propName, "=", result)
+        }else if(propType == "list"){
+            line = paste(propName, "=", printListProp(propVal) )
+        }else if(propType == "list of file paths"){
+            line = paste(propName, "=", printListProp(propVal) )
         }else{
             line = paste(propName, "=", propVal)
         }
@@ -162,23 +166,21 @@ readBljProps <- function(existingLines){
 }
 
 orderDefaultPropFiles <- function(start, chain){
-    # chain - a named list whose names are file names (basename) 
-    # and whose elements are each the vecter of file names (full file path) that the named file lists as default props.
+    # chain - a named list whose names are file names (basename) and whose elements are 
+    #         each the vecter of file names (full file path) that the named file lists as default props.
     # start - a file name (basename) that correstponds to one of the names of the chain list
     #
-    # returns a list of 3:
+    # returns a list of:
     # missing: full file paths whose basename is not in names(chain)
     # dangling: The name of the file that lead to the file path(s) that are missing
     # chained: a vector of basenames, ending with 'start'.  This is the order in which to load the available default props files.
-    result = list(missing=c(), dangling=c(), chained=c())
+    result = list(missing=c(), dangling=c(), chained=c(start))
+    if (length(chain)==0) return(result)
     
-    message("start: ", start, "; chain: ", chain)
+    message("start: ", printListProp(start), "; chain: ", chain)
     
-    # if (start %in% names(chain)){
     missingStarts = setdiff(start, names(chain))
-    if (length(missingStarts) == 0){
-        result$chained=c(start)
-    }else{
+    if (length(missingStarts) > 0){
         result$missing = missingStarts
         return(result)
     }
@@ -204,11 +206,17 @@ orderDefaultPropFiles <- function(start, chain){
     }
     if (length(children) > 0){
         result$dangling = parent[parentIndex]
-        result$missing = missing
+        result$missing = missing[!is.na(missing)]
     }
     return(result)
 }
 
 parseListProp <- function(value){
+    # value - single string that is the property value
+    # returns a vector
     trimws( unlist( strsplit( value, ",", fixed=TRUE) ) )
+}
+
+printListProp <- function(values){
+    paste(values, collapse=", ")
 }
