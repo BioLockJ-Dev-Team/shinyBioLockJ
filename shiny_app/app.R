@@ -494,6 +494,9 @@ server <- function(input, output, session) {
     # Properties
     observeEvent(input$addCostomPropBtn, {
         message("The button was pushed! button: addCostomPropBtn")
+        req(input$customPropName)
+        req(trimws(input$customPropName) != "")
+        req(input$customPropVal)
         values$customProps[[input$customPropName]] <- input$customPropVal
         updateTextInput(session, "customPropName", value = "")
         updateTextInput(session, "customPropVal", value = "")
