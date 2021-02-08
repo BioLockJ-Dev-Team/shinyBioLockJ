@@ -215,29 +215,41 @@ server <- function(input, output, session) {
         names(df) = c("prefix", "propName")
         df$prefix = as.character(df$prefix)
         df$propName = as.character(df$propName)
+        df$isCustom = TRUE
         message("df has ", nrow(df), " rows.")
         #
         # general property defaults are reflected in general property ui
-        df = df[! df$propName %in% names(values$pipelineProperties),]
-        message("After removing general props, df has ", nrow(df), " rows.")
+        df[df$propName %in% names(values$pipelineProperties), "isCustom"] <- FALSE
+        # df = df[! df$propName %in% names(values$pipelineProperties),]
+        message("After removing general props, df has ", sum(df$isCustom), " rows.")
         #
         # mdoule property defaults are reflected in ui when that module is added
-        df = df[! df$propName %in% names( modulePerProp( allModuleInfo() )),]
-        message("After removing module props, df has ", nrow(df), " rows.")
+        df[df$propName %in% names( modulePerProp( allModuleInfo() )), "isCustom"] <- FALSE
+        # df = df[! df$propName %in% names( modulePerProp( allModuleInfo() )),]
+        message("After removing module props, df has ", sum(df$isCustom), " rows.")
         #
         # module overrides that use the module class name are reflected in module property ui
-        df = df[! df$prefix %in% names( allModuleInfo() ),]
-        message("After removing module-override props, df has ", nrow(df), " rows.")
+        df[df$prefix %in% names( allModuleInfo() ), "isCustom"] <- FALSE
+        # df = df[! df$prefix %in% names( allModuleInfo() ),]
+        message("After removing module-override props, df has ", sum(df$isCustom), " rows.")
         #
         # module overrides that use the module's alias are shown in the module ui with the matching alias 
         # IFF the alias is an alias in the current pipline
-        df = df[! df$prefix %in% allActiveAliases(),]
-        message("after removing alias-overrides, df has ", nrow(df), " rows.")
+        df[df$prefix %in% allActiveAliases(), "isCustom"] <- FALSE
+        # df = df[! df$prefix %in% allActiveAliases(),]
+        message("after removing alias-overrides, df has ", sum(df$isCustom), " rows.")
+        #
+        # module overrides that use the module's class name where the modules class name
+        # in this pipeline is covered by an alias...should be shown.
+        # hidden = 
+        # df[df$prefix %in% hidden, "isCustom"] <- TRUE
         #
         # not included in the current config's custom props
-        df = df[! df$prefix %in% names(values$customProps),]
-        message("after removing current custom props, df has ", nrow(df), " rows.")
+        df[df$prefix %in% names(values$customProps), "isCustom"] <- FALSE
+        # df = df[! df$prefix %in% names(values$customProps),]
+        message("after removing current custom props, df has ", sum(df$isCustom), " rows.")
         #
+        df = df[df$isCustom,]
         defaults$values[df$propName]
     })
     
@@ -302,7 +314,7 @@ server <- function(input, output, session) {
     
     output$currentDefaultProps <- renderPrint({
         if(!is.null(values$defaultProps) && !is.na(values$defaultProps)){
-            cat("pipeline.defaultProps = ", printListProp(values$defaultProps))
+            cat( writeConfigProp("pipeline.defaultProps", values$defaultProps, "list") )
         }else{
             cat("# no pipeline.defaultProps")
         }
@@ -437,8 +449,21 @@ server <- function(input, output, session) {
     
     observeEvent(input$loadDefaultProps, {
         message("Pushed button: loadDefaultProps")
-        values$defaultProps = input$selectDefaultProps
-        shinyFeedback::hideFeedback("selectDefaultProps")
+        chainInfo = orderDefaultPropFiles(start=input$selectDefaultProps, chain=defaults$defaultPropsChain)
+        if (length(chainInfo$dangling) > 0){
+            shinyjs::disable("loadDefaultProps")
+            shinyFeedback::showFeedbackDanger("selectDefaultProps", c("Missing file: ", printListProp(chainInfo$missing)))
+        }else{
+            values$defaultProps = input$selectDefaultProps
+            defaults$values = c()
+            defaults$values = lapply(genPropInfo(), function(prop){ prop$default })
+            defaults$activeFiles = chainInfo$chained
+            for (file in defaults$activeFiles){
+                newProps = defaults$defaultPropsList[[file]]
+                defaults$values[names(newProps)] = newProps
+            }
+            shinyFeedback::hideFeedback("selectDefaultProps")
+        }
     })
     
     observeEvent(input$populateExistingConfig, {
