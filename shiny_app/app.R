@@ -66,7 +66,7 @@ ui <-  fluidPage(
                          width = 7,
                          h4("Save to file"),
                          textInput("projectName", "Project name", value="myPipeline", placeholder = "new project name"),
-                         checkboxInput("include_standard_defaults", "include defaults"),
+                         checkboxInput("include_standard_defaults", "include values that match defaults"),
                          checkboxInput("include_biolockj_version", "include BioLockJ version"),
                          downloadButton("downloadData", "Save config file"),
                          uiOutput("configText")))
@@ -85,7 +85,7 @@ ui <-  fluidPage(
                      tableOutput("chainableFiles"),
                      h4("Select defaults"),
                      em("This is what sets the pipeline.defaultProps for your current pipeline, and the defaults that are reflected throughout this configuration."),
-                     shinyjs::disabled(selectInput("selectDefaultProps", "pipeline.defaultProps", choices = c(""), multiple=TRUE)),
+                     shinyjs::disabled(selectInput("selectDefaultProps", "pipeline.defaultProps", choices = c(none=""), multiple=TRUE)),
                      tableOutput("chainedFiles"),
                      shinyjs::disabled(actionButton("loadDefaultProps", "set as defaults")),
                      h4("Current defaults"),
@@ -288,7 +288,7 @@ server <- function(input, output, session) {
         chainInfo = orderDefaultPropFiles(start=input$selectDefaultProps, chain=defaults$defaultPropsChain)
         if (length(chainInfo$dangling) > 0){
             shinyjs::disable("loadDefaultProps")
-            shinyFeedback::showFeedbackWarning("selectDefaultProps", c("Missing file: ", printListProp(chainInfo$missing)))
+            shinyFeedback::showFeedbackWarning("selectDefaultProps", paste("Missing file:", printListProp(chainInfo$missing)) )
         }else{
             shinyjs::enable("loadDefaultProps")
             shinyFeedback::showFeedbackSuccess("selectDefaultProps")
@@ -348,15 +348,18 @@ server <- function(input, output, session) {
     
     # Properties
     output$genProps <- renderUI({
+        message("Rendering ui for slot genProps...")
         argsList =  lapply(as.list(names(groupedProps())), function(groupName){
             group = groupedProps()[[groupName]]
             tabPanel(groupName,
                      p(paste("See the user guide for more info about", groupName, "properties.", collaps=" ")),
                      lapply(group, function(propName){
-                         prop = genPropInfo()[[propName]]
-                         propUI <- renderPropUi(propName, prop, default=isolate(values$pipelineProperties[[propName]]))
-                         observeEvent(input[[propName]],{
-                             values$pipelineProperties[[propName]] <- input[[propName]]
+                         propUI <- renderPropUi(propName, 
+                                                genPropInfo()[[propName]], 
+                                                defaults$values[[propName]], 
+                                                isolate(values$pipelineProperties[[propName]]))
+                         observeEvent(input[[propUiName(propName)]],{
+                             values$pipelineProperties[[propName]] <- input[[propUiName(propName)]]
                          })
                          propUI
                      }))
@@ -366,11 +369,14 @@ server <- function(input, output, session) {
         do.call(tabsetPanel, argsList)
     })
     
+    indexRmButtons = reactiveVal(0) # each time this ui is rendered, the buttons are all new buttons; otherwise, if you remove property "a", and later try to add it, you can't.
     output$showCustomProps <- renderUI({
         if (length(values$customProps) > 0 ){
             lapply(names(values$customProps), function(cp){
-                message("creating option to remove property: ", cp)
-                buttonId=paste0("rm-", cp)
+                index=isolate(indexRmButtons()) + 1
+                indexRmButtons(index)
+                buttonId=paste0("REMOVE", propUiName(cp), index)
+                message("creating option [", buttonId, "] to remove property: ", cp)
                 customPropUi <- fluidRow(
                     column(9, renderPrint(cat(paste(cp, "=", values$customProps[[cp]])))),
                     column(3, actionButton(buttonId, "remove")))
@@ -412,6 +418,15 @@ server <- function(input, output, session) {
     
     
     # Home
+    observeEvent(input$populateExistingConfig, {
+        input$AddModuleButton
+        message("The button got pushed: populateExistingConfig")
+        req( input$existingConfig )
+        populateModules()
+        populateProps()
+        populateProjectName()
+    })
+    
     output$downloadData <- downloadHandler(
         filename = function() {
             paste0(input$projectName, ".config")
@@ -426,15 +441,13 @@ server <- function(input, output, session) {
         message("Event: input$defaultPropsFiles")
         req(input$defaultPropsFiles)
         for (i in 1:nrow(input$defaultPropsFiles)){
-            props = readBljProps(readLines(input$defaultPropsFiles$datapath[i]))
-            chainsTo = props["pipeline.defaultProps"]
-            if ( is.null(chainsTo) || is.na(chainsTo) || chainsTo=="" || input$ignoreChain){
+            allProps = readBljProps(readLines(input$defaultPropsFiles$datapath[i]))
+            if ( length(allProps$defaultProps)==0 || input$ignoreChain){
                 defaults$defaultPropsChain[input$defaultPropsFiles$name[i]] = NA
             }else{
-                props = props[names(props) != "pipeline.defaultProps"]
-                defaults$defaultPropsChain[[input$defaultPropsFiles$name[i]]] = parseListProp( chainsTo )
+                defaults$defaultPropsChain[[input$defaultPropsFiles$name[i]]] = allProps$defaultProps
             }
-            defaults$defaultPropsList[[input$defaultPropsFiles$name[i]]] = props
+            defaults$defaultPropsList[[input$defaultPropsFiles$name[i]]] = allProps$properties
         }
         wasSelected = input$selectDefaultProps
         defaults$uploadedFiles <- rbind(defaults$uploadedFiles, input$defaultPropsFiles)
@@ -443,8 +456,10 @@ server <- function(input, output, session) {
         updateCheckboxInput(session, "ignoreChain", value=FALSE)
     })
     
-    observeEvent(input$selectDefaultProps, {
-        shinyFeedback::hideFeedback("selectDefaultProps")
+    observe({
+        if (length(input$selectDefaultProps)==0){ 
+            shinyFeedback::hideFeedback("selectDefaultProps") 
+            }
     })
     
     observeEvent(input$loadDefaultProps, {
@@ -454,25 +469,30 @@ server <- function(input, output, session) {
             shinyjs::disable("loadDefaultProps")
             shinyFeedback::showFeedbackDanger("selectDefaultProps", c("Missing file: ", printListProp(chainInfo$missing)))
         }else{
-            values$defaultProps = input$selectDefaultProps
+            # save state
+            prevCheckBox = input$include_standard_defaults
+            updateCheckboxInput(session, "include_standard_defaults", value=FALSE)
+            tempFile = tempfile()
+            message("config lines: ", do.call(pre, as.list(configLines()) ))
+            writeLines(as.character(configLines()), tempFile)
+            # modify underlying state
             defaults$values = c()
             defaults$values = lapply(genPropInfo(), function(prop){ prop$default })
             defaults$activeFiles = chainInfo$chained
             for (file in defaults$activeFiles){
                 newProps = defaults$defaultPropsList[[file]]
+                message("newProps: ", paste(names(newProps), " = ", newProps, collapse="; "))
                 defaults$values[names(newProps)] = newProps
+                message("Updated defaults$values: ", paste(names(defaults$values), " = ", defaults$values, collapse="; "))
             }
+            values$pipelineProperties = defaults$values[names(values$pipelineProperties)]
+            # restore state
+            existingLines( readLines( tempFile ) )
+            populateProps()
+            values$defaultProps = input$selectDefaultProps
+            updateCheckboxInput(session, "include_standard_defaults", value=prevCheckBox)
             shinyFeedback::hideFeedback("selectDefaultProps")
         }
-    })
-    
-    observeEvent(input$populateExistingConfig, {
-        input$AddModuleButton
-        message("The button got pushed: populateExistingConfig")
-        req( input$existingConfig )
-        populateModules()
-        populateProps()
-        populateProjectName()
     })
     
     # Module
@@ -542,8 +562,13 @@ server <- function(input, output, session) {
     ####################################################################################################
     # reactive expressions that are intuitively like functions
     
-    existingLines <- reactive({
-        readLines( input$existingConfig$datapath )
+    existingLines <- reactiveVal()
+    
+    observeEvent(input$existingConfig, {
+        existingLines( readLines( input$existingConfig$datapath ) )
+    })
+    observeEvent(input$populateExistingConfig, {
+        existingLines( readLines( input$existingConfig$datapath ) )
     })
     
     populateModules <- reactive({
@@ -556,7 +581,9 @@ server <- function(input, output, session) {
     })
     
     populateProps <- reactive({
-        vals = readBljProps( existingLines() )
+        newProps = readBljProps( existingLines() )
+        values$defaultProps = newProps$defaultProps
+        vals = newProps$properties
         if (length(vals) > 0 ){
             for( propName in names(vals) ){
                 message("updating property value: ", propName, " = ", vals[propName])
@@ -608,8 +635,9 @@ server <- function(input, output, session) {
             value = values$pipelineProperties[[p]]
             line = writeConfigProp(p, value, genPropInfo()[[p]]$type)
             if ( !is.null(value) && !is.na(value) && length(value) > 0 && nchar(value) > 0 ){
-                notTheDefault = !is.null(genPropInfo()[[p]]$default) && value != genPropInfo()[[p]]$default
-                if ( is.null(genPropInfo()[[p]]$default) || notTheDefault || input$include_standard_defaults ){
+                notTheDefault = !is.null(defaults$values[[p]]) && value != defaults$values[[p]]
+                message("value of property ", p, "=", value, " is ", ifelse(notTheDefault, "NOT", ""), " the same as the default value: ", defaults$values[[p]])
+                if ( is.null(defaults$values[[p]]) || notTheDefault || input$include_standard_defaults ){
                     lines = c(lines, line)
                 }
             }

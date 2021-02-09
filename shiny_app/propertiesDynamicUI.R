@@ -6,50 +6,51 @@
 
 
 # render prop ui
-renderPropUi <- function(propName, prop, default){
+renderPropUi <- function(propName, prop, default, value){
     # message("Treating property ", propName, " as a ", prop$type, " property.")
+    uiName = propUiName(propName)
     if(prop$type == "boolean"){
         selected = ""
-        if ( !is.null(default) ){
-            if ( default=="Y" || default=="TRUE" || default==TRUE ) {
+        if ( !is.null(value) ){
+            if ( value=="Y" || value=="TRUE" || value==TRUE ) {
                 selected = "Y"
-            }else if(default=="N" || default=="FALSE" || default==FALSE ){
+            }else if(value=="N" || value=="FALSE" || value==FALSE ){
                 selected = "N"
             }
         }
-        inputObj <- radioButtons(inputId = propName,
+        inputObj <- radioButtons(inputId = uiName,
                                  label = propName,
                                  choices = c(Y="Y", N="N", omit=""),
                                  selected = selected,
                                  inline = TRUE)
     }else if(prop$type == "numeric"){
-        inputObj <- numericInput(inputId = propName,
+        inputObj <- numericInput(inputId = uiName,
                               label = propName,
-                              value = default,
+                              value = value,
                               width = '60%')
     }else if(prop$type == "integer"){
-        inputObj <- numericInput(inputId = propName,
+        inputObj <- numericInput(inputId = uiName,
                                  label = propName,
-                                 value = default,
+                                 value = value,
                                  step = 1,
                                  width = '40%')
     }else if(prop$type == "file path"){
-        inputObj <- textInput(inputId = propName,
+        inputObj <- textInput(inputId = uiName,
                               label = propName,
-                              value = default,
+                              value = value,
                               placeholder = default,
                               width = '100%')
     }else if(prop$type == "list of file paths"){
-        inputObj <- textInput(inputId = propName,
+        inputObj <- textInput(inputId = uiName,
                               label = propName,
-                              value = default,
+                              value = value,
                               placeholder = default,
                               width = '100%')
     }else {
-        inputObj <- textInput(inputId = propName,
+        inputObj <- textInput(inputId = uiName,
                               label = propName,
-                              value = default,
-                              placeholder = prop$default,
+                              value = value,
+                              placeholder = default,
                               width = '100%')
     }
     propUI <- tagList(em(prop$type),
@@ -57,4 +58,8 @@ renderPropUi <- function(propName, prop, default){
                       inputObj,
                       br())
     return(propUI)
+}
+
+propUiName <- function(propName){
+    gsub(".", "", propName, fixed=TRUE)
 }

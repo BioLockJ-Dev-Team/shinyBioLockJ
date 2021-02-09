@@ -55,7 +55,7 @@ isValidAlias <- function(alias, existingAlia=c() ){
 writeConfigProp <- function(propName, propVal=NULL, propType="string"){
     if ( is.null(propVal) || is.na(propVal) ){
         line = ""
-    }else if(trimws(propVal) == ""){
+    }else if(trimws(paste(propVal,collapse="")) == ""){
         line = paste(propName, "=", propVal)
     }else{
         if (propType == "boolean"){
@@ -153,16 +153,24 @@ isSharedProp <- function(propMods=modulePerProp(), propName, includeMods=unique(
 }
 
 readBljProps <- function(existingLines){
+    # Returns a list of 2:
+    #   defaultProps: the vector of values given by the pipeline.defaultProps list
+    #   properties: all properties other than pipeline.defaultProps
     exProps = existingLines[ grep("^#", existingLines, invert = TRUE) ]
+    ret = list(defaultProps=c(), properties=c())
     if ( any(grepl("=", exProps)) ){
         splits = strsplit(exProps, split="=", fixed=TRUE)
         splits = splits[which(sapply(splits, function(s){length(s) >= 2}))]
         vals = sapply(splits, function(pair){trimws(paste0(pair[2:length(pair)], collapse=""))})
         names(vals) = sapply(splits, function(pair){trimws(pair[1])})
-        return(vals)
-    }else{
-        return(c())
+        #
+        ret$properties=vals[names(vals) != "pipeline.defaultProps"]
+        chainsTo = vals["pipeline.defaultProps"]
+        if ( !is.null(chainsTo) && !is.na(chainsTo) && !chainsTo==""){
+            ret$defaultProps = parseListProp(chainsTo)
+        }
     }
+    return(ret)
 }
 
 orderDefaultPropFiles <- function(start, chain){
@@ -175,7 +183,7 @@ orderDefaultPropFiles <- function(start, chain){
     # dangling: The name of the file that lead to the file path(s) that are missing
     # chained: a vector of basenames, ending with 'start'.  This is the order in which to load the available default props files.
     result = list(missing=c(), dangling=c(), chained=c(start))
-    if (length(chain)==0) return(result)
+    if ( length(chain) == 0 || length(start) == 0 ) return(result)
     
     message("start: ", printListProp(start), "; chain: ", chain)
     
