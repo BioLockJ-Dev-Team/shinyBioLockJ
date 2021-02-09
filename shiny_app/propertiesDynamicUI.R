@@ -61,20 +61,21 @@ renderPropUi <- function(propName, prop, default, value, defaults){
             inputObj,
             br())
     }else{
-        content = paste("standard default:", defaults$defaultPropsList$standard[[propName]])
+        content = paste0("<b>", propName, "</b>")
+        content = c(content, paste("standard default:", defaults$defaultPropsList$standard[[propName]]))
         for (name in defaults$activeFiles){
-            val = ""
+            val = " "
             if (propName %in% names(defaults$defaultPropsList[[name]])){
                 val = defaults$defaultPropsList[[name]][propName]
             }
             content = c(content, paste0(name, ": ", val))
         }
-        content = c(content, paste0("<b>", defaults$values[[propName]], "</b>"))
+        content = c(content, paste0("= <b>", defaults$values[[propName]], "</b>"))
 
         propUI <- tagList(
             shinyBS::popify(
                 actionLink(propInfoId(propName), "", icon = icon("angle-double-left")),
-                title=propName,
+                title="source of default value",
                 paste0(content, collapse = "<br>"),#content=paste("default:", defaults$values[[propName]]),
                 trigger = c('hover','click'), placement='right'),
             em(prop$type),
