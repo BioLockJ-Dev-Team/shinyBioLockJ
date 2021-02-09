@@ -15,6 +15,8 @@ library(shinythemes)
 library(shinyBS)
 # install.packages("sortable")
 library(sortable)
+# install.packages('shinyFiles')
+library(shinyFiles)
 library(shinyFeedback)
 source('biolockj.R')
 source('biolockj_gui_bridge.R')
@@ -42,7 +44,7 @@ ui <-  fluidPage(
     shinyjs::useShinyjs(),
     navbarPage(
         position = "fixed-top",
-        theme = shinytheme("cerulean"),
+        theme = shinythemes::shinytheme("cerulean"),
         "BioLockJ",
         tabPanel("Home",
                  tags$style(".shiny-input-container {margin-bottom: 0px} #existingConfig_progress { margin-bottom: 0px } .checkbox { margin-top: 0px}"),
@@ -50,49 +52,23 @@ ui <-  fluidPage(
                  tags$style(".shiny-input-container {margin-bottom: 0px} #projectRootDir_progress { margin-bottom: 0px } .checkbox { margin-top: 0px}"),
                  p("navbar"),p("spacer"),
                  h1("BioLockJ Pipeline Builder"),
-                 sidebarLayout(
-                     sidebarPanel(
-                         width = 5,
-                         h4("Project Root Directory"),
-                         em("(recommended)"),
-                         p(em("File paths can be shown relative to the project root directory.")),
-                         checkboxInput("checkRelPaths", "write relative file paths"),
-                         fileInput("projectRootDir", label="Project Root", width = "100%"),#TODO accept directory
-                         h4("Load from file"),
-                         em("(optional)"),
-                         p(em("When you pull values from an existing file, the values from the file will replace anything configured here.")),
-                         fileInput("existingConfig", label="Upload an existing config file", accept = c(".properties", ".config"), width = "100%"),
-                         actionButton("populateExistingConfig", "pull values")
-                     ),
-                     mainPanel(
-                         width = 7,
-                         h4("Save to file"),
-                         textInput("projectName", "Project name", value="myPipeline", placeholder = "new project name"),
-                         checkboxInput("include_standard_defaults", "include values that match defaults"),
-                         checkboxInput("include_biolockj_version", "include BioLockJ version"),
-                         downloadButton("downloadData", "Save config file"),
-                         uiOutput("configText")))
+                 tabsetPanel(
+                     tabPanel("Save to file",
+                              br(),
+                              textInput("projectName", "Project name", value="myPipeline", placeholder = "new project name"),
+                              checkboxInput("include_standard_defaults", "include values that match defaults"),
+                              checkboxInput("include_biolockj_version", "include BioLockJ version"),
+                              shinyjs::disabled(checkboxInput("checkRelPaths", "write relative file paths")),
+                              downloadButton("downloadData", "Save config file"),
+                              uiOutput("configText")),
+                     tabPanel("Load from file",
+                              br(),
+                              em("(optional)"),
+                              p(em("When you pull values from an existing file, the values from the file will replace anything configured here.")),
+                              fileInput("existingConfig", label="Upload an existing config file", accept = c(".properties", ".config")),
+                              actionButton("populateExistingConfig", "pull values"))
+                 )
         ),
-        tabPanel("Defaults",
-                 p("navbar"),p("spacer"),
-                 fluidPage(
-                     h2("Chain default properties"),
-                     em("(optional)"),
-                     p(em("The property 'pipeline.defaultProps=[file]' allows you to use property values from another file. That file may also include a reference to another file creating a chain.  When you run the pipeline, BioLockJ puts all the properties together. Properties defined in multiple files are set according the most recent value in the chain.")),
-                     h4("Locate defaults"),
-                     em("This does not affect your configuration."),
-                     br(),br(),
-                     fileInput("defaultPropsFiles", label="upload default properties files", accept = c(".properties")),
-                     checkboxInput("ignoreChain", "ignore pipeline.defaultProps in this file", value=FALSE),
-                     tableOutput("chainableFiles"),
-                     h4("Select defaults"),
-                     em("This is what sets the pipeline.defaultProps for your current pipeline, and the defaults that are reflected throughout this configuration."),
-                     shinyjs::disabled(selectInput("selectDefaultProps", "pipeline.defaultProps", choices = c(none=""), multiple=TRUE)),
-                     tableOutput("chainedFiles"),
-                     shinyjs::disabled(actionButton("loadDefaultProps", "set as defaults")),
-                     h4("Current defaults"),
-                     verbatimTextOutput("currentDefaultProps")
-                 )),
         tabPanel("Modules",
                  p("navbar"),p("spacer"),
                  fluidPage(    
@@ -156,14 +132,7 @@ ui <-  fluidPage(
                          h4("arguments"),
                          fileInput("extModsDir", "External Modules", placeholder = "optional"),
                          # render text "contains X additional jar files
-                         fileInput("bljProjDir", "Projects (Output) Directory", placeholder = "$BLJ_PROJ"),
-                         h4("core"),
-                         strong("BioLockJ version"),
-                         p("Currently referencing BioLockJ version:"),
-                         verbatimTextOutput("bljVersion"),
-                         fileInput("biolockjJarFile", "BioLockJ Jar File Location", accept=c(".jar")),
-                         actionButton("updateJar", "update jar location", class="btn-danger"),
-                         textOutput("textWarningOnUpdateJar")
+                         fileInput("bljProjDir", "Projects (Output) Directory", placeholder = "$BLJ_PROJ")
                      ),
                      mainPanel(
                          # width=7,
@@ -175,6 +144,52 @@ ui <-  fluidPage(
                          h4("command output:"),
                          uiOutput("precheckOutput")
                      )
+                 )),
+        tabPanel("Defaults",
+                 p("navbar"),p("spacer"),
+                 fluidPage(
+                     h2("Chain default properties"),
+                     em("(optional)"),
+                     p(em("The property 'pipeline.defaultProps=[file]' allows you to use property values from another file. That file may also include a reference to another file creating a chain.  When you run the pipeline, BioLockJ puts all the properties together. Properties defined in multiple files are set according the most recent value in the chain.")),
+                     h4("Locate defaults"),
+                     em("This does not affect your configuration."),
+                     br(),br(),
+                     fileInput("defaultPropsFiles", label="upload default properties files", accept = c(".properties")),
+                     checkboxInput("ignoreChain", "ignore pipeline.defaultProps in this file", value=FALSE),
+                     tableOutput("chainableFiles"),
+                     h4("Select defaults"),
+                     em("This is what sets the pipeline.defaultProps for your current pipeline, and the defaults that are reflected throughout this configuration."),
+                     shinyjs::disabled(selectInput("selectDefaultProps", "pipeline.defaultProps", choices = c(none=""), multiple=TRUE)),
+                     tableOutput("chainedFiles"),
+                     shinyjs::disabled(actionButton("loadDefaultProps", "set as defaults")),
+                     h4("Current defaults"),
+                     verbatimTextOutput("currentDefaultProps")
+                 )),
+        tabPanel("Settings",
+                 p("navbar"),p("spacer"),
+                 fluidPage(
+                     h2("Settings"),
+                     p("Control aspects of this user interface."),
+                     h4("Project Root Directory"),
+                     em("(recommended)"),
+                     p(em("File paths can be shown relative to the project root directory.")),
+                     # checkboxInput("checkRelPaths", "write relative file paths"),
+                     fileInput("projectRootDir", label="Project Root", width = "100%"),#TODO accept directory
+                     h4("File access"),
+                     radioButtons("radioServerType", "How should this interface access files?", 
+                                  choiceNames = list("remote server", "local virtual server", "local machine"), 
+                                  choiceValues = c("remote", "virtual", "local"), inline=TRUE, 
+                                  selected = ifelse(isInDocker(), "remote", "local")),
+                     br(),
+                     h4("Core"),
+                     strong("BioLockJ version: "),
+                     # p("Currently referencing BioLockJ version:"),
+                     textOutput("bljVersion"),
+                     br(),
+                     fluidRow(
+                         column(6, fileInput("biolockjJarFile", "BioLockJ Jar File Location", accept=c(".jar"))),
+                         column(6, actionButton("updateJar", "update jar location", class="btn-danger", style = "margin-top: 25px;"))),
+                     textOutput("textWarningOnUpdateJar")
                  )),
         tabPanel("Help",
                  p("navbar"),p("spacer"),
@@ -683,6 +698,18 @@ server <- function(input, output, session) {
     ####################################################################################################
     # Reactive espressions and observers that serve to keep things smooth and synchronized.
     # These make the app nice, but they are not fundamental to the understanding of the layout and workings.
+    
+    # Home
+    observeEvent(input$projectRootDir, {
+        if(isTruthy(input$projectRootDir)) {
+            shinyjs::enable("checkRelPaths")
+            removeTooltip(session, "checkRelPaths")
+        }else{
+            updateCheckboxInput("checkRelPaths", value = FALSE)
+            shinyjs::disable("checkRelPaths")
+            addTooltip(session, "checkRelPaths", title="requires Project Root Directory")
+        }
+    })
     
     # Modules
     observeEvent(input$orderModules, {
