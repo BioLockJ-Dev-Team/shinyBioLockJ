@@ -109,6 +109,7 @@ ui <-  fluidPage(
                      cellArgs = list(style='white-space: normal;'),
                      fluidPage(p("navbar"),p("spacer"),
                                h2("General Properties"),
+                               checkboxInput("checkLiveFeedback", "show live feedback", value=FALSE),
                                p("General properties are not specific to any one module."),
                                tabsetPanel(
                                    tabPanel(
@@ -360,6 +361,19 @@ server <- function(input, output, session) {
                                                 isolate(values$pipelineProperties[[propName]]))
                          observeEvent(input[[propUiName(propName)]],{
                              values$pipelineProperties[[propName]] <- input[[propUiName(propName)]]
+                             req(input$checkLiveFeedback)
+                             req(genPropInfo()[[propName]]$type != "boolean")
+                             shinyFeedback::hideFeedback( propUiName(propName) )
+                             req(input[[propUiName(propName)]] != "")
+                             isGood = isolate(isValidProp(propName, input[[propUiName(propName)]]))
+                             message("isGood: ", isGood)
+                             if (is.na(isGood)){
+                                 shinyFeedback::hideFeedback( propUiName(propName) )
+                             }else if(isGood){
+                                 shinyFeedback::showFeedbackSuccess( propUiName(propName) )
+                             }else{
+                                 shinyFeedback::showFeedbackWarning( propUiName(propName), "not good" )
+                             }
                          })
                          propUI
                      }))
@@ -473,7 +487,6 @@ server <- function(input, output, session) {
             prevCheckBox = input$include_standard_defaults
             updateCheckboxInput(session, "include_standard_defaults", value=FALSE)
             tempFile = tempfile()
-            message("config lines: ", do.call(pre, as.list(configLines()) ))
             writeLines(as.character(configLines()), tempFile)
             # modify underlying state
             defaults$values = c()
@@ -481,9 +494,7 @@ server <- function(input, output, session) {
             defaults$activeFiles = chainInfo$chained
             for (file in defaults$activeFiles){
                 newProps = defaults$defaultPropsList[[file]]
-                message("newProps: ", paste(names(newProps), " = ", newProps, collapse="; "))
                 defaults$values[names(newProps)] = newProps
-                message("Updated defaults$values: ", paste(names(defaults$values), " = ", defaults$values, collapse="; "))
             }
             values$pipelineProperties = defaults$values[names(values$pipelineProperties)]
             # restore state
@@ -636,7 +647,7 @@ server <- function(input, output, session) {
             line = writeConfigProp(p, value, genPropInfo()[[p]]$type)
             if ( !is.null(value) && !is.na(value) && length(value) > 0 && nchar(value) > 0 ){
                 notTheDefault = !is.null(defaults$values[[p]]) && value != defaults$values[[p]]
-                message("value of property ", p, "=", value, " is ", ifelse(notTheDefault, "NOT", ""), " the same as the default value: ", defaults$values[[p]])
+                # message("value of property ", p, "=", value, " is ", ifelse(notTheDefault, "NOT", ""), " the same as the default value: ", defaults$values[[p]])
                 if ( is.null(defaults$values[[p]]) || notTheDefault || input$include_standard_defaults ){
                     lines = c(lines, line)
                 }
