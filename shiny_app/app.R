@@ -11,6 +11,8 @@ library(shiny)
 library(shinyjs)
 # install.packages("shinythemes")
 library(shinythemes)
+# install.packages("shinyBS")
+library(shinyBS)
 # install.packages("sortable")
 library(sortable)
 library(shinyFeedback)
@@ -358,7 +360,8 @@ server <- function(input, output, session) {
                          propUI <- renderPropUi(propName, 
                                                 genPropInfo()[[propName]], 
                                                 defaults$values[[propName]], 
-                                                isolate(values$pipelineProperties[[propName]]))
+                                                isolate(values$pipelineProperties[[propName]]),
+                                                isolate(defaults))
                          observeEvent(input[[propUiName(propName)]],{
                              values$pipelineProperties[[propName]] <- input[[propUiName(propName)]]
                              req(input$checkLiveFeedback)
