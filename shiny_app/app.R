@@ -52,21 +52,24 @@ ui <-  fluidPage(
                  tags$style(".shiny-input-container {margin-bottom: 0px} #projectRootDir_progress { margin-bottom: 0px } .checkbox { margin-top: 0px}"),
                  p("navbar"),p("spacer"),
                  h1("BioLockJ Pipeline Builder"),
-                 tabsetPanel(
+                 tabsetPanel(id="HomeTabs",
                      tabPanel("Save to file",
                               br(),
                               textInput("projectName", "Project name", value="myPipeline", placeholder = "new project name"),
                               checkboxInput("include_standard_defaults", "include values that match defaults"),
                               checkboxInput("include_biolockj_version", "include BioLockJ version"),
-                              shinyjs::disabled(checkboxInput("checkRelPaths", "write relative file paths")),
+                              tipify(shinyjs::disabled(checkboxInput("checkRelPaths", "write relative file paths")), "not yet functional"),
                               downloadButton("downloadData", "Save config file"),
                               uiOutput("configText")),
                      tabPanel("Load from file",
-                              br(),
+                              h2("Load an existing config file"),
                               em("(optional)"),
                               p(em("When you pull values from an existing file, the values from the file will replace anything configured here.")),
                               fileInput("existingConfig", label="Upload an existing config file", accept = c(".properties", ".config")),
-                              actionButton("populateExistingConfig", "pull values"))
+                              shinyjs::disabled(actionButton("populateExistingConfig", "pull values")),
+                              hr(),
+                              uiOutput("examples")
+                              )
                  )
         ),
         tabPanel("Modules",
@@ -173,21 +176,25 @@ ui <-  fluidPage(
                      h4("Project Root Directory"),
                      em("(recommended)"),
                      p(em("File paths can be shown relative to the project root directory.")),
-                     # checkboxInput("checkRelPaths", "write relative file paths"),
-                     fileInput("projectRootDir", label="Project Root", width = "100%"),#TODO accept directory
+                     shinyjs::disabled(checkboxInput("checkRelPathsDuplicate", "write relative file paths")),
+                     #
+                     # fileInput("projectRootDir", label="Project Root", width = "100%"),#TODO accept directory
+                     shinyDirButton("projectRootDir", "Set Project Root Directory", "Select Project Root Directory"),
+                     verbatimTextOutput("showProjectDir"),
+                     #
                      h4("File access"),
                      radioButtons("radioServerType", "How should this interface access files?", 
                                   choiceNames = list("remote server", "local virtual server", "local machine"), 
                                   choiceValues = c("remote", "virtual", "local"), inline=TRUE, 
                                   selected = ifelse(isInDocker(), "remote", "local")),
-                     br(),
+                     br(), 
                      h4("Core"),
                      strong("BioLockJ version: "),
                      # p("Currently referencing BioLockJ version:"),
                      textOutput("bljVersion"),
                      br(),
                      fluidRow(
-                         column(6, fileInput("biolockjJarFile", "BioLockJ Jar File Location", accept=c(".jar"))),
+                         column(6, fileInput("biolockjJarFile", "BioLockJ Jar File Location", accept=c(".jar"), width='100%')),
                          column(6, actionButton("updateJar", "update jar location", class="btn-danger", style = "margin-top: 25px;"))),
                      textOutput("textWarningOnUpdateJar")
                  )),
@@ -227,6 +234,8 @@ server <- function(input, output, session) {
         uploadedFiles = data.frame(name=c(), size=c(), type=c(), datapath=c()),
         activeFiles = c()
     )
+    
+    projectDirPath <- reactiveVal("")
 
     customDefaults <- reactive({
         df = stack( sapply(names(defaults$values), function(p){strsplit(p, ".", fixed=TRUE)[[1]][1]}), stringsAsFactors=FALSE)
@@ -297,6 +306,16 @@ server <- function(input, output, session) {
     # Home
     output$configText <- renderUI({
         do.call(pre, as.list(configLines()))
+    })
+    
+    output$examples <- renderUI({
+        examples = findExampleConfigs()
+        tagList(
+            h2("Load an example config file"),
+            selectInput("selectExample", "Select an example", choices = examples, 
+                        selected="BioLockJ/templates/myFirstPipeline/myFirstPipeline.config"),
+            actionButton("populateExampleConfig", "pull values")
+        )
     })
     
     # Defaults
@@ -448,15 +467,17 @@ server <- function(input, output, session) {
     ####################################################################################################
     # define event handlers for buttons
     
-    
     # Home
     observeEvent(input$populateExistingConfig, {
-        input$AddModuleButton
         message("The button got pushed: populateExistingConfig")
         req( input$existingConfig )
+        existingLines( readLines( input$existingConfig$datapath ) )
+        if (input$radioServerType == "local") projectDirPath( dirname(input$existingConfig$datapath) )
+        else projectDirPath( "" )
         populateModules()
         populateProps()
-        populateProjectName()
+        populateProjectName(input$existingConfig$name)
+        updateTabsetPanel(session, "HomeTabs", selected="Save to file")
     })
     
     output$downloadData <- downloadHandler(
@@ -467,6 +488,16 @@ server <- function(input, output, session) {
             writeLines(configLines(), file)
         }
     )
+    
+    observeEvent(input$populateExampleConfig, {
+        message("The button got pushed, button: populateExampleConfig")
+        existingLines( readLines( input$selectExample ) )
+        projectDirPath( dirname(input$selectExample) )
+        populateModules()
+        populateProps()
+        populateProjectName( basename( input$selectExample ) )
+        updateTabsetPanel(session, "HomeTabs", selected="Save to file")
+    })
     
     # Defaults
     observeEvent(input$defaultPropsFiles,{
@@ -592,13 +623,11 @@ server <- function(input, output, session) {
     # reactive expressions that are intuitively like functions
     
     existingLines <- reactiveVal()
-    
-    observeEvent(input$existingConfig, {
-        existingLines( readLines( input$existingConfig$datapath ) )
-    })
-    observeEvent(input$populateExistingConfig, {
-        existingLines( readLines( input$existingConfig$datapath ) )
-    })
+
+    populateProjectName <- function(path){
+        newName = tools::file_path_sans_ext(path)
+        updateTextInput(session, "projectName", value=newName)
+    }
     
     populateModules <- reactive({
         existingLines <- existingLines()
@@ -630,11 +659,6 @@ server <- function(input, output, session) {
                 }
             }
         }
-    })
-    
-    populateProjectName <- reactive({
-        newName = tools::file_path_sans_ext(input$existingConfig$name)
-        updateTextInput(session, "projectName", value=newName)
     })
     
     configLines <- reactive({
@@ -700,14 +724,39 @@ server <- function(input, output, session) {
     # These make the app nice, but they are not fundamental to the understanding of the layout and workings.
     
     # Home
-    observeEvent(input$projectRootDir, {
-        if(isTruthy(input$projectRootDir)) {
+    observeEvent(projectDirPath(), {
+        if( projectDirPath() != "" ) {
             shinyjs::enable("checkRelPaths")
-            removeTooltip(session, "checkRelPaths")
+            shinyjs::enable("checkRelPathsDuplicate")
+            shinyBS::removeTooltip(session, "checkRelPaths")
         }else{
-            updateCheckboxInput("checkRelPaths", value = FALSE)
             shinyjs::disable("checkRelPaths")
-            addTooltip(session, "checkRelPaths", title="requires Project Root Directory")
+            shinyjs::disable("checkRelPathsDuplicate")
+            updateCheckboxInput(session, "checkRelPaths", value = FALSE)
+            shinyBS::addTooltip(session, "checkRelPaths", title="requires Project Root Directory")
+        }
+    })
+    
+    observeEvent(input$checkRelPathsDuplicate, {
+        updateCheckboxInput(session, "checkRelPaths", value = input$checkRelPathsDuplicate)
+    })
+    observeEvent(input$checkRelPaths, {
+        updateCheckboxInput(session, "checkRelPathsDuplicate", value = input$checkRelPaths)
+    })
+    
+    observeEvent(input$existingConfig, {
+        if (file.exists(input$existingConfig$datapath)){
+            shinyjs::enable("populateExistingConfig")
+        }else{
+            shinyjs:disable("populateExistingConfig")
+        }
+    })
+
+    observeEvent(input$selectExample, {
+        if (file.exists(input$selectExample)){
+            shinyjs::enable("populateExampleConfig")
+        }else{
+            shinyjs:disable("populateExampleConfig")
         }
     })
     
@@ -802,6 +851,55 @@ server <- function(input, output, session) {
             shinyjs::enable("checkMapBlj")
         }
     })
+    
+    
+    
+    ####################################################################################################
+    #############################        Files / File paths    #########################################
+    ####################################################################################################
+    
+    # volumes <- c(Home = fs::path_home(), "R Installation" = R.home(), getVolumes()())
+    if (file.exists("/mnt/mounts")){
+        volumes <- c(Home = fs::path_home(), mounted="/mnt/mounts")
+    }else{
+        volumes <- c(Home = fs::path_home())
+    }
+    
+    
+    shinyDirChoose(input, "projectRootDir", roots = volumes, restrictions = system.file(package = "base"))
+    
+    
+    
+    startDir <- reactive({
+        if (projectDirPath()=="") "Home"
+        else projectDirPath()
+    })
+    output$showProjectDir <- renderPrint(cat(projectDirPath()))
+    
+    observeEvent(input$projectRootDir,{
+        if (is.integer(input$projectRootDir)) {
+            projectDirPath("")
+            message("No directory has been selected (shinyDirChoose)")
+        } else {
+            projectDirPath(parseDirPath(volumes, input$projectRootDir))
+        }
+    })
+    
+    ## add to ui:
+    ## uiOutput("dynIO"),
+    ##
+    # output$dynIO <- renderUI({
+    #     # have the server stuff here
+    #     shinyDirChoose(input, "exampleFileProp1", defaultPath=".", defaultRoot="ProjectRoot", roots=c(volumes, ProjectRoot=startDir())) #defaultRoot=projectDirPath(), 
+    #     shinyDirChoose(input, "exampleFileProp2", roots=volumes, allowDirCreate = FALSE)
+    #     # build the ui here
+    #     tagList(
+    #         br(),
+    #         shinyDirButton("exampleFileProp1", "example file property 1", "Choose value for property 1"),
+    #         shinyDirButton("exampleFileProp2", "example file property 2", "Choose value for property 2")
+    #     )
+    # })
+    
     
 }
 

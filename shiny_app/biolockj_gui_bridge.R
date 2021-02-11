@@ -228,3 +228,19 @@ parseListProp <- function(value){
 printListProp <- function(values){
     paste(values, collapse=", ")
 }
+
+findExampleConfigs <- function(bljDir="BioLockJ"){
+    examples = tryCatch({
+        templatesDir = file.path(bljDir, "templates")
+        examples = sapply(dir(templatesDir, include.dirs = TRUE, full.names = TRUE), 
+                          function(d){
+                              set = dir(d, pattern = ".config", full.names = TRUE)
+                              names(set) = basename(set)
+                              set
+                          })
+        examples = examples[ sapply(examples, function(e){ length(e) > 0}) ]
+        names(examples) = basename(names(examples))
+        examples
+    }, error=function(...){""})
+    return(examples)
+}

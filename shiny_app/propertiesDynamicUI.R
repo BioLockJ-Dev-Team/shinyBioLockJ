@@ -70,7 +70,6 @@ renderPropUi <- function(propName, prop, default, value, defaults){
             }
             content = c(content, paste0(name, ": ", val))
         }
-        # content = c(content, paste0("= <b>", defaults$values[[propName]], "</b>"))
 
         propUI <- tagList(
             shinyBS::popify(

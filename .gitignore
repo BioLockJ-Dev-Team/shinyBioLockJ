@@ -4,6 +4,7 @@
 **/pipelines/*
 pipelines/*
 */temp/*
+shiny_app/BioLockJ/**
 
 # The jar file is in the folder for publishing to shiny io
 shiny_app/BioLockJ/dist/BioLockJ.jar
