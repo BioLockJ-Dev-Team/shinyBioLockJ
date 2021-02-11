@@ -58,7 +58,8 @@ ui <-  fluidPage(
                               textInput("projectName", "Project name", value="myPipeline", placeholder = "new project name"),
                               checkboxInput("include_standard_defaults", "include values that match defaults"),
                               checkboxInput("include_biolockj_version", "include BioLockJ version"),
-                              tipify(shinyjs::disabled(checkboxInput("checkRelPaths", "write relative file paths")), "not yet functional"),
+                              shinyBS::tipify(checkboxInput("include_mid_progress", "include work-in-progress"), "include commented list of modules in Trash and their properties, See Modules", placement='right'),
+                              shinyBS::tipify(shinyjs::disabled(checkboxInput("checkRelPaths", "write relative file paths")), "not yet functional; requires project root directory, see Settings", placement='right'),
                               downloadButton("downloadData", "Save config file"),
                               uiOutput("configText")),
                      tabPanel("Load from file",
@@ -667,36 +668,55 @@ server <- function(input, output, session) {
             lines = c(lines, paste("# Updated using BioLockJ version:", bljVer()))
         }
         #
-        lines = c(lines, "")
-        lines = c(lines, values$moduleList)
-        lines = c(lines, "")
+        lines = c(lines, "", values$moduleList)
         #
         if ( !is.na(values$defaultProps) && length(values$defaultProps) > 0 ){
-            lines = c(lines, writeConfigProp("pipeline.defaultProps", values$defaultProps, "list"))
-            lines = c(lines, "")
+            lines = c(lines, "", writeConfigProp("pipeline.defaultProps", values$defaultProps, "list"))
         }
         if ( length(values$customProps) > 0 ){
-            lines = c(lines, "# Custom Properties")
+            lines = c(lines, "", "# Custom Properties")
             for(cp in names(values$customProps)){
                 line = paste(cp, "=", values$customProps[[cp]])
                 lines = c(lines, line)
             }
-            lines = c(lines, "")
         }
-        lines = c(lines, "# General Properties")
+        lines = c(lines, "", "# General Properties")
         for(p in names(genPropInfo())){
             value = values$pipelineProperties[[p]]
-            line = writeConfigProp(p, value, genPropInfo()[[p]]$type)
-            if ( !is.null(value) && !is.na(value) && length(value) > 0 && nchar(value) > 0 ){
-                notTheDefault = !is.null(defaults$values[[p]]) && value != defaults$values[[p]]
-                # message("value of property ", p, "=", value, " is ", ifelse(notTheDefault, "NOT", ""), " the same as the default value: ", defaults$values[[p]])
-                if ( is.null(defaults$values[[p]]) || notTheDefault || input$include_standard_defaults ){
-                    lines = c(lines, line)
+            if ( doIncludeProp(p, value) ){
+                line = writeConfigProp(p, value, genPropInfo()[[p]]$type)
+                lines = c(lines, line)
+            }
+        }
+        for (runline in values$moduleList){
+            al = aliasFromRunline(runline)
+            alsProps = list()
+            if ( length(alsProps) > 0 ){
+                lines = c(lines, "", paste("#", al))
+                # TODO - add module props, module override props for this module
+            }
+        }
+        if (input$include_mid_progress){
+            if ( length(values$removedModules) > 0){
+                lines = c(lines, "", "",  "### Modules that might be added to the pipeline:")
+                for (runline in values$removedModules){
+                    lines = c(lines, paste0("#", runline))
+                    # TODO - add module props, module override props for this module ---all to have '#' in front!
                 }
             }
         }
         lines
     })
+    
+    doIncludeProp <- function(p, value){
+        if (isWritableValue(value)){
+            notTheDefault = !is.null(defaults$values[[p]]) && value != defaults$values[[p]]
+            # message("value of property ", p, "=", value, " is ", ifelse(notTheDefault, "NOT", ""), " the same as the default value: ", defaults$values[[p]])
+            return(is.null(defaults$values[[p]]) || notTheDefault || input$include_standard_defaults)
+        }else{
+            return(FALSE)
+        }
+    }
     
     # Precheck
     precheckCommand <- reactive({

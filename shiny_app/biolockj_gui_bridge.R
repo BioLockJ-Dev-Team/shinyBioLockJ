@@ -244,3 +244,7 @@ findExampleConfigs <- function(bljDir="BioLockJ"){
     }, error=function(...){""})
     return(examples)
 }
+
+isWritableValue <- function(value){
+    return( !is.null(value) && !is.na(value) && length(value) > 0 && nchar(value) > 0 )
+}
