@@ -671,12 +671,12 @@ server <- function(input, output, session) {
         lines = c(lines, "", values$moduleList)
         #
         if ( !is.na(values$defaultProps) && length(values$defaultProps) > 0 ){
-            lines = c(lines, "", writeConfigProp("pipeline.defaultProps", values$defaultProps, "list"))
+            lines = c(lines, "", writeConfigProp("pipeline.defaultProps", values$defaultProps, "list of file paths"))
         }
         if ( length(values$customProps) > 0 ){
             lines = c(lines, "", "# Custom Properties")
             for(cp in names(values$customProps)){
-                line = paste(cp, "=", values$customProps[[cp]])
+                line = writeConfigProp(cp, values$customProps[[cp]])
                 lines = c(lines, line)
             }
         }
@@ -684,7 +684,7 @@ server <- function(input, output, session) {
         for(p in names(genPropInfo())){
             value = values$pipelineProperties[[p]]
             if ( doIncludeProp(p, value) ){
-                line = writeConfigProp(p, value, genPropInfo()[[p]]$type)
+                line = writeConfigProp(p, value, genPropInfo()[[p]]$type, projectDirPath(), input$checkRelPaths)
                 lines = c(lines, line)
             }
         }

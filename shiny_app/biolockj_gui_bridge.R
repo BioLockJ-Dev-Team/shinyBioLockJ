@@ -52,7 +52,8 @@ isValidAlias <- function(alias, existingAlia=c() ){
     return(TRUE)
 }
 
-writeConfigProp <- function(propName, propVal=NULL, propType="string"){
+writeConfigProp <- function(propName, propVal=NULL, propType="string", projectDir="", useRelPath=FALSE){
+    message("Writting up the value for prop ", propName, " which is of type ", propType)
     if ( is.null(propVal) || is.na(propVal) ){
         line = ""
     }else if(trimws(paste(propVal,collapse="")) == ""){
@@ -64,8 +65,10 @@ writeConfigProp <- function(propName, propVal=NULL, propType="string"){
             line = paste(propName, "=", result)
         }else if(propType == "list"){
             line = paste(propName, "=", printListProp(propVal) )
+        }else if (propType == "file path"){
+            line = paste(propName, "=", writeFilePath(propVal, projectDir, useRelPath ) )
         }else if(propType == "list of file paths"){
-            line = paste(propName, "=", printListProp(propVal) )
+            line = paste(propName, "=", writeFilePathList(propVal, projectDir, useRelPath) )
         }else{
             line = paste(propName, "=", propVal)
         }
@@ -247,4 +250,56 @@ findExampleConfigs <- function(bljDir="BioLockJ"){
 
 isWritableValue <- function(value){
     return( !is.null(value) && !is.na(value) && length(value) > 0 && nchar(value) > 0 )
+}
+
+writeFullPath <- function(path, projectDir){
+    newPath = path
+    if (file.exists(projectDir)){
+        if ( startsWith(path, "./") ){
+            message("There is a project dir, and the path starts with it... make the conversion...")
+            newPath = file.path(projectDir, substring(path, 3))
+            message("newPath: ", newPath)
+        }else if (startsWith(path, "../")){
+            newPath = file.path(dirname(projectDir), substring(path, 4))
+        }
+    }
+    return(newPath)
+}
+
+writeRelPath <- function(path, projectDir){
+    newPath = path
+    if (file.exists(projectDir)){
+        if ( startsWith(path, projectDir) ){
+            newPath = gsub(pattern=projectDir, replacement=".", path, fixed=TRUE)
+        }else if (startsWith(path, dirname(projectDir))){
+            newPath = gsub(pattern=dirname(projectDir), replacement="..", path, fixed=TRUE)
+        }
+    }
+    return(newPath)
+}
+
+writeFilePath <- function(path, projectDir, useRelPath){
+    message("Formatting file path: ", path)
+    if (useRelPath) message("relative to: ", projectDir)
+    else message("possibly extracted relative path from: ", projectDir)
+    
+    if (useRelPath){
+        return( writeRelPath(path, projectDir) )
+    }else{
+        return( writeFullPath(path, projectDir) )
+    }
+}
+
+writeFilePathList <- function(pathList, projectDir, useRelPath){
+    # pathList - The value of a list property, probably represented as a single string
+    # projectDir - the path that the paths should be relative to
+    # useRelPath - if TRUE, relative paths are written, if false, then full paths are determined.
+    paths = parseListProp(pathList)
+    newPaths = sapply(paths, writeFilePath, projectDir=projectDir, useRelPath=useRelPath)
+    # if (useRelPath){
+    #     newPaths = writeRelPath(paths, projectDir)
+    # }else{
+    #     newPaths = writeFullPath(paths, projectDir)
+    # }
+    return(printListProp(newPaths))
 }
