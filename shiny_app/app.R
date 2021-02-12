@@ -493,7 +493,7 @@ server <- function(input, output, session) {
     observeEvent(input$populateExampleConfig, {
         message("The button got pushed, button: populateExampleConfig")
         existingLines( readLines( input$selectExample ) )
-        projectDirPath( dirname(input$selectExample) )
+        projectDirPath( file.path(getwd(), dirname(input$selectExample) ) )
         populateModules()
         populateProps()
         populateProjectName( basename( input$selectExample ) )
@@ -669,7 +669,7 @@ server <- function(input, output, session) {
         lines = c(lines, "", values$moduleList)
         #
         if ( !is.na(values$defaultProps) && length(values$defaultProps) > 0 ){
-            lines = c(lines, "", writeConfigProp("pipeline.defaultProps", values$defaultProps, "list of file paths"))
+            lines = c(lines, "", writeConfigProp("pipeline.defaultProps", values$defaultProps, "list of file paths", projectDirPath(), input$checkRelPaths))
         }
         if ( length(values$customProps) > 0 ){
             lines = c(lines, "", "# Custom Properties")
