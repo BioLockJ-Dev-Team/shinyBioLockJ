@@ -1,3 +1,4 @@
+# Header ####
 #
 # This is a Shiny web application. You can run the application by clicking
 # the 'Run App' button above.
@@ -7,6 +8,7 @@
 #    http://shiny.rstudio.com/
 #
 
+#############################          Libraries          #########################################
 library(shiny)
 library(shinyjs)
 # install.packages("shinythemes")
@@ -23,9 +25,7 @@ source('biolockj_gui_bridge.R')
 source('propertiesDynamicUI.R')
 
 
-####################################################################################################
 #############################      initial JAVA calls      #########################################
-####################################################################################################
 # Run these calls before starting so these bulk values are available.
 # IFF the user chooses to change the BioLockJ jar file, (which will a rare thing)
 # then the reactive values that store these are updated.
@@ -35,9 +35,8 @@ initpropInfo <- propInfoSansSpecials()
 initmoduleInfo <- moduleInfo()
 initGenDefaults <- lapply(initpropInfo, function(prop){ prop$default })
 
-####################################################################################################
+
 #############################              UI              #########################################
-####################################################################################################
 
 ui <-  fluidPage( 
     shinyFeedback::useShinyFeedback(),
@@ -46,6 +45,7 @@ ui <-  fluidPage(
         position = "fixed-top",
         theme = shinythemes::shinytheme("cerulean"),
         "BioLockJ",
+        # Home ####
         tabPanel("Home",
                  tags$style(".shiny-input-container {margin-bottom: 0px} #existingConfig_progress { margin-bottom: 0px } .checkbox { margin-top: 0px}"),
                  tags$style(".shiny-input-container {margin-bottom: 0px} #defaultPropsFiles_progress { margin-bottom: 0px } .checkbox { margin-top: 0px}"),
@@ -73,6 +73,7 @@ ui <-  fluidPage(
                               )
                  )
         ),
+        # Modules ####
         tabPanel("Modules",
                  p("navbar"),p("spacer"),
                  fluidPage(    
@@ -86,6 +87,7 @@ ui <-  fluidPage(
                          column(2, actionButton("AddModuleButton", style = "margin-top: 20px;", "add to pipeline", class = "btn-success"))),
                      uiOutput("manageModules"),
                      actionButton("emptyModuleTrash", "Empty Trash"))),
+        # Properties ####
         tabPanel("Properties",
                  splitLayout(
                      cellArgs = list(style='white-space: normal;'),
@@ -118,6 +120,7 @@ ui <-  fluidPage(
                                p(),
                                textOutput("modulePropsHeader"))
                  )),
+        # Precheck ####
         tabPanel("Precheck",
                  p("navbar"),p("spacer"),
                  sidebarLayout(
@@ -149,6 +152,7 @@ ui <-  fluidPage(
                          uiOutput("precheckOutput")
                      )
                  )),
+        # Defaults ####
         tabPanel("Defaults",
                  p("navbar"),p("spacer"),
                  fluidPage(
@@ -169,6 +173,7 @@ ui <-  fluidPage(
                      h4("Current defaults"),
                      verbatimTextOutput("currentDefaultProps")
                  )),
+        # Settings ####
         tabPanel("Settings",
                  p("navbar"),p("spacer"),
                  fluidPage(
@@ -199,24 +204,21 @@ ui <-  fluidPage(
                          column(6, actionButton("updateJar", "update jar location", class="btn-danger", style = "margin-top: 25px;"))),
                      textOutput("textWarningOnUpdateJar")
                  )),
+        # Help ####
         tabPanel("Help",
                  p("navbar"),p("spacer"),
                  includeMarkdown("HelpPage.md"))
     )
-) # end of UI
+) # end of UI ####
 
 
-####################################################################################################
 #############################            SERVER            #########################################
-####################################################################################################
 
 server <- function(input, output, session) {
     
-    ####################################################################################################
     #############################         Core Objects         #########################################
-    ####################################################################################################
+
     ## Use reactive objects as the single source of truth.
-    
     values <- reactiveValues(defaultProps=NA,
                              moduleList=list(), 
                              customProps=list(), 
@@ -299,12 +301,11 @@ server <- function(input, output, session) {
     # break out properties into categories
     groupedProps <- reactiveVal( groupPropsByCategory(initpropInfo) )
     
-    ####################################################################################################
+
     #############################         Dynamic UI           #########################################
-    ####################################################################################################
     # Defining the UI.  This would be in the ui function... but its dynamic.
     
-    # Home
+    # Home ####
     output$configText <- renderUI({
         do.call(pre, as.list(configLines()))
     })
@@ -319,7 +320,7 @@ server <- function(input, output, session) {
         )
     })
     
-    # Defaults
+    # Defaults ####
     output$chainedFiles <- renderTable({
         req(input$selectDefaultProps)
         shinyFeedback::hideFeedback("selectDefaultProps")
@@ -358,7 +359,7 @@ server <- function(input, output, session) {
         }
     })
     
-    # Modules
+    # Modules ####
     output$selectModule <- renderUI({
         selectInput("AddBioModule",
                     "Select new BioModule", 
@@ -384,7 +385,7 @@ server <- function(input, output, session) {
     })
 
     
-    # Properties
+    # Properties ####
     output$genProps <- renderUI({
         message("Rendering ui for slot genProps...")
         argsList =  lapply(as.list(names(groupedProps())), function(groupName){
@@ -463,12 +464,11 @@ server <- function(input, output, session) {
     
 
     
-    ####################################################################################################
+
     #############################       Button Actions         #########################################
-    ####################################################################################################
     # define event handlers for buttons
     
-    # Home
+    # Home ####
     observeEvent(input$populateExistingConfig, {
         message("The button got pushed: populateExistingConfig")
         req( input$existingConfig )
@@ -500,7 +500,7 @@ server <- function(input, output, session) {
         updateTabsetPanel(session, "HomeTabs", selected="Save to file")
     })
     
-    # Defaults
+    # Defaults ####
     observeEvent(input$defaultPropsFiles,{
         message("Event: input$defaultPropsFiles")
         req(input$defaultPropsFiles)
@@ -556,7 +556,7 @@ server <- function(input, output, session) {
         }
     })
     
-    # Module
+    # Module ####
     observeEvent(input$AddModuleButton, {
         runLine = makeRunLine(input$AddBioModule, input$newAlias)
         msg = capture.output({
@@ -572,7 +572,7 @@ server <- function(input, output, session) {
         values$removedModules <- list()
     })
     
-    # Properties
+    # Properties ####
     observeEvent(input$addCostomPropBtn, {
         message("The button was pushed! button: addCostomPropBtn")
         req(input$customPropName)
@@ -618,9 +618,7 @@ server <- function(input, output, session) {
         precheckRestultText(system2("exec", args = command, stdout = TRUE, stderr = TRUE))
     })
     
-    ####################################################################################################
     #############################           Actions            #########################################
-    ####################################################################################################
     # reactive expressions that are intuitively like functions
     
     existingLines <- reactiveVal()
@@ -737,13 +735,12 @@ server <- function(input, output, session) {
 
     
     
-    ####################################################################################################
+
     #############################           Synchrony          #########################################
-    ####################################################################################################
     # Reactive espressions and observers that serve to keep things smooth and synchronized.
     # These make the app nice, but they are not fundamental to the understanding of the layout and workings.
     
-    # Home
+    # Home ####
     observeEvent(projectDirPath(), {
         if( projectDirPath() != "" ) {
             shinyjs::enable("checkRelPaths")
@@ -780,7 +777,7 @@ server <- function(input, output, session) {
         }
     })
     
-    # Modules
+    # Modules ####
     observeEvent(input$orderModules, {
         values$moduleList <- input$orderModules
     })
@@ -824,11 +821,11 @@ server <- function(input, output, session) {
         shinyFeedback::feedbackSuccess("newAlias", goodAlias)
     })
     
-    # Properties
+    # Properties ####
     # The essential observers that keep the pipelineProperties synchronized are defined within 
     # the renderUI function that creates the inputs.
     
-    # Precheck
+    # Precheck ####
     output$bljVersion <- renderText( bljVer() )
     
     observe({
@@ -874,10 +871,9 @@ server <- function(input, output, session) {
     
     
     
-    ####################################################################################################
+
     #############################        Files / File paths    #########################################
-    ####################################################################################################
-    
+
     # volumes <- c(Home = fs::path_home(), "R Installation" = R.home(), getVolumes()())
     if (file.exists("/mnt/mounts")){
         volumes <- c(Home = fs::path_home(), mounted="/mnt/mounts")
@@ -921,9 +917,12 @@ server <- function(input, output, session) {
     # })
     
     
-}
+} # end of Server ####
 
+#############################            Notes            #########################################
 
+# Collapse all sections: cmd + alt + O
+# Expand all sections: shift + cmd + alt + O
 
-# Run the application 
+# Run the application ####
 shinyApp(ui = ui, server = server)
