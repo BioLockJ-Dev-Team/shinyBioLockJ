@@ -67,7 +67,10 @@ ui <-  fluidPage(
                               checkboxInput("include_standard_defaults", "include values that match defaults"),
                               checkboxInput("include_biolockj_version", "include BioLockJ version"),
                               shinyBS::tipify(checkboxInput("include_mid_progress", "include work-in-progress"), "include commented list of modules in Trash and their properties, See Modules", placement='right'),
-                              shinyBS::tipify(shinyjs::disabled(checkboxInput("checkRelPaths", "write relative file paths")), "requires project root directory, see Settings", placement='right'),
+                              shinyBS::tipify(shinyjs::disabled(checkboxInput("checkRelPaths", "write relative file paths")), "requires project root directory", placement='right'),
+                              #
+                              uiOutput("projectRootDirUI"),
+                              # verbatimTextOutput("showProjectDir"),
                               uiOutput("saveButtons"),
                               uiOutput("configText")),
                      tabPanel("Load from file",
@@ -187,14 +190,6 @@ ui <-  fluidPage(
                  fluidPage(
                      h2("Settings"),
                      p("Control aspects of this user interface."),
-                     h4("Project Root Directory"),
-                     em("(recommended)"),
-                     p(em("File paths can be shown relative to the project root directory.")),
-                     shinyjs::disabled(checkboxInput("checkRelPathsDuplicate", "write relative file paths")),
-                     #
-                     uiOutput("projectRootDirUI"),
-                     verbatimTextOutput("showProjectDir"),
-                     #
                      h4("File access"),
                      shinyjs::disabled(radioButtons("radioServerType", "How should this interface access files?", 
                                   choiceNames = list("remote server", "local virtual server", "local machine"), 
@@ -476,7 +471,10 @@ server <- function(input, output, session) {
     
     output$projectRootDirUI <- renderUI({
         shinyFiles::shinyDirChoose(input, "projectRootDir", roots = volumes, restrictions = system.file(package = "base"))
-        shinyFiles::shinyDirButton("projectRootDir", "Set Project Root Directory", "Select Project Root Directory")
+        fluidRow(
+            column(3, shinyFiles::shinyDirButton("projectRootDir", "Set Project Root Directory", "Select Project Root Directory")),
+            column(9, verbatimTextOutput("showProjectDir", placeholder=TRUE))
+        )
     })
     
     output$showProjectDir <- renderPrint(cat(projectDirPath()))
@@ -519,26 +517,35 @@ server <- function(input, output, session) {
     # save buttons
     output$saveButtons <- renderUI({
         tagList(
+            # renderText({ "here is text" }),
             downloadButton("downloadData", "Download"),
-            shinyFiles::shinySaveButton("saveAs", "Save as...", "Locally save config file", viewtype = "list",
-                                        filename=isolate(input$projectName), 
-                                        filetype = list(pipeline = "config", defaults = "properties")),
-            shinyjs::disabled(actionButton("safeConfigBtn", "Save", icon = icon("save")))
+            # shinyFiles::shinySaveButton("saveAs", "Save as...", "Locally save config file", viewtype = "list",
+            #                             filename=isolate(input$projectName), 
+            #                             filetype = list(pipeline = "config", defaults = "properties")),
+            shinyjs::disabled(actionButton("safeConfigBtn", "Save to Project Root Directory", icon = icon("save")))
         )
     })
-    shinyFileSave(input, "saveAs", roots=volumes, session=session)
-    saveAsPath <- reactive({
-        parsed = parseSavePath(volumes, input$saveAs)
-        as.character(parsed$datapath)
-    })
+    # shinyFileSave(input, "saveAs", roots=volumes, session=session)
+    # saveAsPath <- reactive({
+    #     parsed = parseSavePath(volumes, input$saveAs)
+    #     as.character(parsed$datapath)
+    # })
+    saveAsPath <- reactive(file.path(projectDirPath(), configFileName()))
     observeEvent(input$safeConfigBtn, {
         message("Saving file to: ", saveAsPath())
         writeLines(text = as.character(configLines()), saveAsPath())
     })
-    observeEvent(input$saveAs, {
-        if ( isTruthy(saveAsPath())  ){
+    observeEvent(list(saveAsPath(), input$safeConfigBtn), {
+        if ( file.exists(projectDirPath() ) ){
+            # shinyBS::removePopover(session, "safeConfigBtn")
             shinyjs::enable("safeConfigBtn")
-            projectDirPath(dirname(saveAsPath()))
+            if (file.exists(saveAsPath())){
+                message("opt 1")
+                shinyBS::addPopover(session, "safeConfigBtn", title="Replace existing", content=configFileName(), placement = 'right')
+            }else{
+                message("opt 2")
+                shinyBS::addPopover(session, "safeConfigBtn", title="Create file", content=configFileName(), placement = 'right')
+            }
         }else{
             shinyjs::disable("safeConfigBtn")
         }
@@ -809,21 +816,12 @@ server <- function(input, output, session) {
     observeEvent(projectDirPath(), {
         if( projectDirPath() != "" ) {
             shinyjs::enable("checkRelPaths")
-            shinyjs::enable("checkRelPathsDuplicate")
             shinyBS::removeTooltip(session, "checkRelPaths")
         }else{
             shinyjs::disable("checkRelPaths")
-            shinyjs::disable("checkRelPathsDuplicate")
             updateCheckboxInput(session, "checkRelPaths", value = FALSE)
             shinyBS::addTooltip(session, "checkRelPaths", title="requires Project Root Directory")
         }
-    })
-    
-    observeEvent(input$checkRelPathsDuplicate, {
-        updateCheckboxInput(session, "checkRelPaths", value = input$checkRelPathsDuplicate)
-    })
-    observeEvent(input$checkRelPaths, {
-        updateCheckboxInput(session, "checkRelPathsDuplicate", value = input$checkRelPaths)
     })
     
     observeEvent(input$existingConfig, {
