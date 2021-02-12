@@ -35,6 +35,14 @@ initpropInfo <- propInfoSansSpecials()
 initmoduleInfo <- moduleInfo()
 initGenDefaults <- lapply(initpropInfo, function(prop){ prop$default })
 
+# # volumes <- c(Home = fs::path_home(), "R Installation" = R.home(), getVolumes()())
+# if (file.exists("/mnt/mounts")){
+#     volumes <- c(Home = fs::path_home(), mounted="/mnt/mounts")
+# }else{
+#     volumes <- c(Home = fs::path_home(), getVolumes()())
+# }
+volumes <- c(Home = fs::path_home(), getVolumes()())
+
 
 #############################              UI              #########################################
 
@@ -59,8 +67,8 @@ ui <-  fluidPage(
                               checkboxInput("include_standard_defaults", "include values that match defaults"),
                               checkboxInput("include_biolockj_version", "include BioLockJ version"),
                               shinyBS::tipify(checkboxInput("include_mid_progress", "include work-in-progress"), "include commented list of modules in Trash and their properties, See Modules", placement='right'),
-                              shinyBS::tipify(shinyjs::disabled(checkboxInput("checkRelPaths", "write relative file paths")), "not yet functional; requires project root directory, see Settings", placement='right'),
-                              downloadButton("downloadData", "Save config file"),
+                              shinyBS::tipify(shinyjs::disabled(checkboxInput("checkRelPaths", "write relative file paths")), "requires project root directory, see Settings", placement='right'),
+                              uiOutput("saveButtons"),
                               uiOutput("configText")),
                      tabPanel("Load from file",
                               h2("Load an existing config file"),
@@ -184,15 +192,14 @@ ui <-  fluidPage(
                      p(em("File paths can be shown relative to the project root directory.")),
                      shinyjs::disabled(checkboxInput("checkRelPathsDuplicate", "write relative file paths")),
                      #
-                     # fileInput("projectRootDir", label="Project Root", width = "100%"),#TODO accept directory
-                     shinyDirButton("projectRootDir", "Set Project Root Directory", "Select Project Root Directory"),
+                     uiOutput("projectRootDirUI"),
                      verbatimTextOutput("showProjectDir"),
                      #
                      h4("File access"),
-                     radioButtons("radioServerType", "How should this interface access files?", 
+                     shinyjs::disabled(radioButtons("radioServerType", "How should this interface access files?", 
                                   choiceNames = list("remote server", "local virtual server", "local machine"), 
                                   choiceValues = c("remote", "virtual", "local"), inline=TRUE, 
-                                  selected = ifelse(isInDocker(), "remote", "local")),
+                                  selected = ifelse(isInDocker(), "remote", "local")) ),
                      br(), 
                      h4("Core"),
                      strong("BioLockJ version: "),
@@ -309,6 +316,8 @@ server <- function(input, output, session) {
     output$configText <- renderUI({
         do.call(pre, as.list(configLines()))
     })
+    
+    # shinyFileSave(input, "safeConfigBtn", roots = volumes, session = session, restrictions = system.file(package = "base"))
     
     output$examples <- renderUI({
         examples = findExampleConfigs()
@@ -463,6 +472,23 @@ server <- function(input, output, session) {
     # Precheck
     
 
+    # Settings ####
+    
+    output$projectRootDirUI <- renderUI({
+        shinyFiles::shinyDirChoose(input, "projectRootDir", roots = volumes, restrictions = system.file(package = "base"))
+        shinyFiles::shinyDirButton("projectRootDir", "Set Project Root Directory", "Select Project Root Directory")
+    })
+    
+    output$showProjectDir <- renderPrint(cat(projectDirPath()))
+    
+    observeEvent(input$projectRootDir,{
+        if (is.integer(input$projectRootDir)) {
+            message("No directory has been selected (shinyDirChoose)")
+        } else {
+            message("setting new value for project root...")
+            projectDirPath( parseDirPath(volumes, input$projectRootDir) )
+        }
+    })
     
 
     #############################       Button Actions         #########################################
@@ -489,6 +515,34 @@ server <- function(input, output, session) {
             writeLines(configLines(), file)
         }
     )
+    
+    # save buttons
+    output$saveButtons <- renderUI({
+        tagList(
+            downloadButton("downloadData", "Download"),
+            shinyFiles::shinySaveButton("saveAs", "Save as...", "Locally save config file", viewtype = "list",
+                                        filename=isolate(input$projectName), 
+                                        filetype = list(pipeline = "config", defaults = "properties")),
+            shinyjs::disabled(actionButton("safeConfigBtn", "Save", icon = icon("save")))
+        )
+    })
+    shinyFileSave(input, "saveAs", roots=volumes, session=session)
+    saveAsPath <- reactive({
+        parsed = parseSavePath(volumes, input$saveAs)
+        as.character(parsed$datapath)
+    })
+    observeEvent(input$safeConfigBtn, {
+        message("Saving file to: ", saveAsPath())
+        writeLines(text = as.character(configLines()), saveAsPath())
+    })
+    observeEvent(input$saveAs, {
+        if ( isTruthy(saveAsPath())  ){
+            shinyjs::enable("safeConfigBtn")
+            projectDirPath(dirname(saveAsPath()))
+        }else{
+            shinyjs::disable("safeConfigBtn")
+        }
+    })
     
     observeEvent(input$populateExampleConfig, {
         message("The button got pushed, button: populateExampleConfig")
@@ -583,6 +637,35 @@ server <- function(input, output, session) {
         updateTextInput(session, "customPropVal", value = "")
     })
     
+    # Precheck ####
+    observeEvent(input$runPrecheckBtn, {
+        message("Running command:")
+        message(precheckCommand())
+
+        if ( length(values$moduleList) == 0 ) validate("You need to include at least one module")
+        if ( isWritableValue(projectDirPath()) && input$radioServerType =="local" ){
+            message("Running locally with a configured project root dir; using project root dir")
+            tempFileLoc = tempfile(pattern = input$projectName, tmpdir = projectDirPath(), fileext = ".config")
+        }else{
+            tempFileLoc = file.path(getwd(),"temp", configFileName())
+        }
+        
+        message("writing to file: ", tempFileLoc)
+        writeLines(configLines(), tempFileLoc)
+        
+        # short term cheats - TODO
+        command = gsub(pattern=configFileName(), replacement = tempFileLoc, precheckCommand())
+        defaultBljProj=paste("--precheck-only", "--blj_proj", file.path(getwd(), "BioLockJ", "pipelines"))
+        command = gsub("--precheck-only", defaultBljProj, command)
+        message("...actually running command:")
+        message(command)
+        #
+        precheckRestultText(system2("exec", args = command, stdout = TRUE, stderr = TRUE))
+        #
+        file.remove(tempFileLoc)
+    })
+    
+    # Settings ####
     observeEvent(input$updateJar, {
         req(input$biolockjJarFile)
         # TODO: show spinner or progress bar or something to let the user know that a delay is expected.
@@ -598,30 +681,12 @@ server <- function(input, output, session) {
         output$textWarningOnUpdateJar <- renderText("")
     })
     
-    observeEvent(input$runPrecheckBtn, {
-        message("Running command:")
-        message(precheckCommand())
-
-        if ( length(values$moduleList) == 0 ) validate("You need to include at least one module")
-        configFileName = paste0(input$projectName, ".config")
-        tempFileLoc = file.path(getwd(),"temp", configFileName)
-        message("writing to file: ", tempFileLoc)
-        writeLines(configLines(), tempFileLoc)
-        
-        # short term cheats - TODO
-        command = gsub(pattern=configFileName, replacement = tempFileLoc, precheckCommand())
-        defaultBljProj=paste("--precheck-only", "--blj_proj", file.path(getwd(), "BioLockJ", "pipelines"))
-        command = gsub("--precheck-only", defaultBljProj, command)
-        message("...actually running command:")
-        message(command)
-        #
-        precheckRestultText(system2("exec", args = command, stdout = TRUE, stderr = TRUE))
-    })
-    
     #############################           Actions            #########################################
     # reactive expressions that are intuitively like functions
     
     existingLines <- reactiveVal()
+    
+    configFileName <- reactive( paste0(input$projectName, ".config") )
 
     populateProjectName <- function(path){
         newName = tools::file_path_sans_ext(path)
@@ -872,50 +937,6 @@ server <- function(input, output, session) {
     
     
 
-    #############################        Files / File paths    #########################################
-
-    # volumes <- c(Home = fs::path_home(), "R Installation" = R.home(), getVolumes()())
-    if (file.exists("/mnt/mounts")){
-        volumes <- c(Home = fs::path_home(), mounted="/mnt/mounts")
-    }else{
-        volumes <- c(Home = fs::path_home())
-    }
-    
-    
-    shinyDirChoose(input, "projectRootDir", roots = volumes, restrictions = system.file(package = "base"))
-    
-    
-    
-    startDir <- reactive({
-        if (projectDirPath()=="") "Home"
-        else projectDirPath()
-    })
-    output$showProjectDir <- renderPrint(cat(projectDirPath()))
-    
-    observeEvent(input$projectRootDir,{
-        if (is.integer(input$projectRootDir)) {
-            projectDirPath("")
-            message("No directory has been selected (shinyDirChoose)")
-        } else {
-            projectDirPath(parseDirPath(volumes, input$projectRootDir))
-        }
-    })
-    
-    ## add to ui:
-    ## uiOutput("dynIO"),
-    ##
-    # output$dynIO <- renderUI({
-    #     # have the server stuff here
-    #     shinyDirChoose(input, "exampleFileProp1", defaultPath=".", defaultRoot="ProjectRoot", roots=c(volumes, ProjectRoot=startDir())) #defaultRoot=projectDirPath(), 
-    #     shinyDirChoose(input, "exampleFileProp2", roots=volumes, allowDirCreate = FALSE)
-    #     # build the ui here
-    #     tagList(
-    #         br(),
-    #         shinyDirButton("exampleFileProp1", "example file property 1", "Choose value for property 1"),
-    #         shinyDirButton("exampleFileProp2", "example file property 2", "Choose value for property 2")
-    #     )
-    # })
-    
     
 } # end of Server ####
 
