@@ -35,14 +35,7 @@ initpropInfo <- propInfoSansSpecials()
 initmoduleInfo <- moduleInfo()
 initGenDefaults <- lapply(initpropInfo, function(prop){ prop$default })
 
-# # volumes <- c(Home = fs::path_home(), "R Installation" = R.home(), getVolumes()())
-# if (file.exists("/mnt/mounts")){
-#     volumes <- c(Home = fs::path_home(), mounted="/mnt/mounts")
-# }else{
-#     volumes <- c(Home = fs::path_home(), getVolumes()())
-# }
 volumes <- c(Home = fs::path_home(), getVolumes()())
-
 
 #############################              UI              #########################################
 
@@ -71,14 +64,22 @@ ui <-  fluidPage(
                               #
                               uiOutput("projectRootDirUI"),
                               # verbatimTextOutput("showProjectDir"),
-                              uiOutput("saveButtons"),
-                              uiOutput("configText")),
+                              #
+                              # uiOutput("saveButtons"),
+                              fluidRow(
+                                  column(3, downloadButton("downloadData", "Download", width='80%')),
+                                  column(9, uiOutput("saveButton"))
+                              ),
+                              p(),
+                              # uiOutput("configText"),
+                              verbatimTextOutput("configText2")),
                      tabPanel("Load from file",
-                              h2("Load an existing config file"),
+                              h2("Upoad an existing config file"),
                               em("(optional)"),
                               p(em("When you pull values from an existing file, the values from the file will replace anything configured here.")),
-                              fileInput("existingConfig", label="Upload an existing config file", accept = c(".properties", ".config")),
+                              fileInput("uploadExistingConfig", label="Upload an existing config file", accept = c(".properties", ".config")),
                               shinyjs::disabled(actionButton("populateExistingConfig", "pull values")),
+                              uiOutput("LocalExistingConfig"),
                               hr(),
                               uiOutput("examples")
                               )
@@ -173,7 +174,7 @@ ui <-  fluidPage(
                      h4("Locate defaults"),
                      em("This does not affect your configuration."),
                      br(),br(),
-                     fileInput("defaultPropsFiles", label="upload default properties files", accept = c(".properties")),
+                     fileInput("defaultPropsFiles", label="upload default properties files", multiple = TRUE, accept = c(".properties", ".config")),
                      checkboxInput("ignoreChain", "ignore pipeline.defaultProps in this file", value=FALSE),
                      tableOutput("chainableFiles"),
                      h4("Select defaults"),
@@ -229,8 +230,9 @@ server <- function(input, output, session) {
                              # GET the property values through this object; the pipelineProperties reactiveValues object
                              # SET the property values through the input$[propName] object
                              # an observeEvent ensures the flow of info from the input$ to the reactiveValues
-                             pipelineProperties=initGenDefaults, # TODO: maybe change name to backboneProperties
-                             moduleProperties=modulePerProp(initmoduleInfo))
+                             pipelineProperties=initGenDefaults # TODO: maybe change name to backboneProperties
+                             # moduleProperties=modulePerProp(initmoduleInfo)
+                             )
     
     defaults <- reactiveValues(
         defaultPropsChain = list(),
@@ -308,16 +310,19 @@ server <- function(input, output, session) {
     # Defining the UI.  This would be in the ui function... but its dynamic.
     
     # Home ####
-    output$configText <- renderUI({
-        do.call(pre, as.list(configLines()))
+    # output$configText <- renderUI({
+    #     do.call(pre, as.list(configLines()))
+    # })
+    output$configText2 <- renderPrint({
+        cat(paste0(configLines(), collapse = "\n"))
     })
     
-    # shinyFileSave(input, "safeConfigBtn", roots = volumes, session = session, restrictions = system.file(package = "base"))
+    # shinyFileSave(input, "saveConfigBtn", roots = volumes, session = session, restrictions = system.file(package = "base"))
     
     output$examples <- renderUI({
         examples = findExampleConfigs()
         tagList(
-            h2("Load an example config file"),
+            h2("Pull from an example config file"),
             selectInput("selectExample", "Select an example", choices = examples, 
                         selected="BioLockJ/templates/myFirstPipeline/myFirstPipeline.config"),
             actionButton("populateExampleConfig", "pull values")
@@ -492,63 +497,117 @@ server <- function(input, output, session) {
     #############################       Button Actions         #########################################
     # define event handlers for buttons
     
-    # Home ####
-    observeEvent(input$populateExistingConfig, {
-        message("The button got pushed: populateExistingConfig")
-        req( input$existingConfig )
-        existingLines( readLines( input$existingConfig$datapath ) )
-        if (input$radioServerType == "local") projectDirPath( dirname(input$existingConfig$datapath) )
-        else projectDirPath( "" )
-        populateModules()
-        populateProps()
-        populateProjectName(input$existingConfig$name)
-        updateTabsetPanel(session, "HomeTabs", selected="Save to file")
-    })
-    
+    # Home - save config ####
+
     output$downloadData <- downloadHandler(
         filename = function() {
-            paste0(input$projectName, ".config")
+            configFileName()
         },
         content = function(file) {
-            writeLines(configLines(), file)
+            writeLines(as.character(configLines()), file)
         }
     )
     
-    # save buttons
-    output$saveButtons <- renderUI({
-        tagList(
-            # renderText({ "here is text" }),
-            downloadButton("downloadData", "Download"),
-            # shinyFiles::shinySaveButton("saveAs", "Save as...", "Locally save config file", viewtype = "list",
-            #                             filename=isolate(input$projectName), 
-            #                             filetype = list(pipeline = "config", defaults = "properties")),
-            shinyjs::disabled(actionButton("safeConfigBtn", "Save to Project Root Directory", icon = icon("save")))
-        )
+    output$saveButton <- renderUI({
+        useIcon = icon("save")
+        id = "saveConfigBtn"
+        #create, replace, update, cannot
+        styleCase = savingFileWill()
+        message("rendering save button for case: ", styleCase)
+        if ( styleCase == "create" ){
+            shinyBS::tipify(actionButton(id, "create config file in Project Root Directory", icon = useIcon, class="btn-success"), basename(saveAsPath()), placement = 'right')
+        }else if ( styleCase == "update" ){
+            actionButton(id, "update config file in Project Root Directory", icon = useIcon, class="btn-success")
+        }else if ( styleCase == "replace" ){
+            shinyBS::tipify(actionButton(id, "replace config file in Project Root Directory", icon = useIcon, class="btn-danger"), basename(saveAsPath()), placement = 'right')
+        }else if ( styleCase == "cannot" && projectDirPath() != ""){
+            shinyjs::disabled(actionButton(id, "Save to Project Root Directory (non writable location)", icon = useIcon))
+        }else{
+            shinyjs::disabled(actionButton(id, "Save to Project Root Directory (requires Project Root)", icon = useIcon))
+        }
     })
-    # shinyFileSave(input, "saveAs", roots=volumes, session=session)
-    # saveAsPath <- reactive({
-    #     parsed = parseSavePath(volumes, input$saveAs)
-    #     as.character(parsed$datapath)
-    # })
-    saveAsPath <- reactive(file.path(projectDirPath(), configFileName()))
-    observeEvent(input$safeConfigBtn, {
-        message("Saving file to: ", saveAsPath())
-        writeLines(text = as.character(configLines()), saveAsPath())
-    })
-    observeEvent(list(saveAsPath(), input$safeConfigBtn), {
-        if ( file.exists(projectDirPath() ) ){
-            # shinyBS::removePopover(session, "safeConfigBtn")
-            shinyjs::enable("safeConfigBtn")
-            if (file.exists(saveAsPath())){
-                message("opt 1")
-                shinyBS::addPopover(session, "safeConfigBtn", title="Replace existing", content=configFileName(), placement = 'right')
+    saveAsPath <- reactive( file.path(projectDirPath(), configFileName()) )
+    sessionHasSavedAs <- reactiveVal(c())
+
+    savingFileWill <- reactive({
+        sessionHasSavedAs()
+        saveAsPath()
+        if ( file.exists(saveAsPath()) ){
+            if ( file.access(dirname(saveAsPath()), mode=2)!=0 ) {
+                val = "cannot"
+            }else if ( saveAsPath() %in% sessionHasSavedAs() ){
+                val = "update"
             }else{
-                message("opt 2")
-                shinyBS::addPopover(session, "safeConfigBtn", title="Create file", content=configFileName(), placement = 'right')
+                val = "replace"
             }
         }else{
-            shinyjs::disable("safeConfigBtn")
+            if ( file.access(dirname(saveAsPath()), mode=2)==0 ) {
+                message("saveAsPath: ", saveAsPath())
+                message("Does that path exist: ", file.exists(saveAsPath()))
+                val = "create"
+            }else{
+                val = "cannot"
+            }
         }
+        message("new value: ", val)
+        val
+    })
+    
+    observeEvent(input$saveConfigBtn, {
+        message("Saving file to: ", saveAsPath())
+        writeLines(text = as.character(configLines()), saveAsPath())
+        sessionHasSavedAs( c(isolate( sessionHasSavedAs() ), saveAsPath()))
+    })
+
+    # Home - load config ####
+    output$LocalExistingConfig <- renderUI({
+        if (input$radioServerType == "local"){
+            shinyFileChoose(input, "LocalExistingConfig", roots = volumes, session = session)
+            tagList(
+                hr(),
+                h2("Load an existing config file"),
+                shinyFilesButton("LocalExistingConfig", "Choose a local config file", "Please select a file", multiple = FALSE, viewtype = "list"),
+                verbatimTextOutput("showLocalFile", placeholder=TRUE),
+                shinyjs::disabled(actionButton("populateFromLocalConfig", "pull values"))
+            )
+            
+        }
+    })
+    observeEvent( localFilePath(), {
+        if ( isTruthy(localFilePath()) && file.exists(localFilePath())){
+            shinyjs::enable("populateFromLocalConfig")
+        }else{
+            shinyjs::disable("populateFromLocalConfig")
+        }
+    })
+    localFilePath <- reactive({
+        prsd = parseFilePaths(volumes, input$LocalExistingConfig)
+        prsd$datapath
+        })
+    
+    output$showLocalFile <- renderPrint(cat(localFilePath()))
+    
+    observeEvent(input$populateFromLocalConfig, {
+        message("The button got pushed: populateFromLocalConfig")
+        req( file.exists(localFilePath()) )
+        existingLines( readLines( localFilePath() ) )
+        if (input$radioServerType == "local") projectDirPath( dirname(localFilePath()) )
+        else projectDirPath( "" )
+        populateModules()
+        populateProps()
+        populateProjectName( basename( localFilePath() ) )
+        updateTabsetPanel(session, "HomeTabs", selected="Save to file")
+    })
+    
+    observeEvent(input$populateExistingConfig, {
+        message("The button got pushed: populateExistingConfig")
+        req( input$uploadExistingConfig )
+        existingLines( readLines( input$uploadExistingConfig$datapath ) )
+        projectDirPath( "" )
+        populateModules()
+        populateProps()
+        populateProjectName(input$uploadExistingConfig$name)
+        updateTabsetPanel(session, "HomeTabs", selected="Save to file")
     })
     
     observeEvent(input$populateExampleConfig, {
@@ -824,8 +883,8 @@ server <- function(input, output, session) {
         }
     })
     
-    observeEvent(input$existingConfig, {
-        if (file.exists(input$existingConfig$datapath)){
+    observeEvent(input$uploadExistingConfig, {
+        if (file.exists(input$uploadExistingConfig$datapath)){
             shinyjs::enable("populateExistingConfig")
         }else{
             shinyjs:disable("populateExistingConfig")
