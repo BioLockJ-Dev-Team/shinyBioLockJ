@@ -35,7 +35,7 @@ initpropInfo <- propInfoSansSpecials()
 initmoduleInfo <- moduleInfo()
 initGenDefaults <- lapply(initpropInfo, function(prop){ prop$default })
 
-volumes <- c(Home = fs::path_home(), getVolumes()())
+volumes <- c(Home = fs::path_home())
 
 #############################              UI              #########################################
 
@@ -62,17 +62,16 @@ ui <-  fluidPage(
                               shinyBS::tipify(checkboxInput("include_mid_progress", "include work-in-progress"), "include commented list of modules in Trash and their properties, See Modules", placement='right'),
                               shinyBS::tipify(shinyjs::disabled(checkboxInput("checkRelPaths", "write relative file paths")), "requires project root directory", placement='right'),
                               #
-                              uiOutput("projectRootDirUI"),
-                              # verbatimTextOutput("showProjectDir"),
-                              #
-                              # uiOutput("saveButtons"),
+                              fluidRow(
+                                  column(3, shinyFiles::shinyDirButton("projectRootDir", "Set Project Root Directory", "Select Project Root Directory")),
+                                  column(9, verbatimTextOutput("showProjectDir", placeholder=TRUE))
+                              ),
                               fluidRow(
                                   column(3, downloadButton("downloadData", "Download", width='80%')),
                                   column(9, uiOutput("saveButton"))
                               ),
                               p(),
-                              # uiOutput("configText"),
-                              verbatimTextOutput("configText2")),
+                              verbatimTextOutput("configText", placeholder = TRUE)),
                      tabPanel("Load from file",
                               h2("Upoad an existing config file"),
                               em("(optional)"),
@@ -310,10 +309,7 @@ server <- function(input, output, session) {
     # Defining the UI.  This would be in the ui function... but its dynamic.
     
     # Home ####
-    # output$configText <- renderUI({
-    #     do.call(pre, as.list(configLines()))
-    # })
-    output$configText2 <- renderPrint({
+    output$configText <- renderPrint({
         cat(paste0(configLines(), collapse = "\n"))
     })
     
@@ -474,13 +470,7 @@ server <- function(input, output, session) {
 
     # Settings ####
     
-    output$projectRootDirUI <- renderUI({
-        shinyFiles::shinyDirChoose(input, "projectRootDir", roots = volumes, restrictions = system.file(package = "base"))
-        fluidRow(
-            column(3, shinyFiles::shinyDirButton("projectRootDir", "Set Project Root Directory", "Select Project Root Directory")),
-            column(9, verbatimTextOutput("showProjectDir", placeholder=TRUE))
-        )
-    })
+
     
     output$showProjectDir <- renderPrint(cat(projectDirPath()))
     
@@ -498,6 +488,8 @@ server <- function(input, output, session) {
     # define event handlers for buttons
     
     # Home - save config ####
+    
+    shinyFiles::shinyDirChoose(input, "projectRootDir", roots = volumes, restrictions = system.file(package = "base"))
 
     output$downloadData <- downloadHandler(
         filename = function() {
