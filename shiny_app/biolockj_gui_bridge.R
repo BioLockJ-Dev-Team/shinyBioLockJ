@@ -91,6 +91,11 @@ groupPropsByCategory <- function(propInfo) {
     return(split(props, f=category))
 }
 
+propsInfoForType <- function(propInfo, type){
+    keepIf = sapply(propInfo, function(prop){prop$type == type})
+    return(propInfo[keepIf])
+}
+
 getModuleRunLines <- function(moduleInfo){
     moduleRunLines = sapply(moduleInfo, function(mi){mi$usage})
     names(moduleRunLines) <- names(moduleInfo)

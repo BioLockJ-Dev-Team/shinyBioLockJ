@@ -34,6 +34,7 @@ initbljVer = biolockjVersion()
 initpropInfo <- propInfoSansSpecials()
 initmoduleInfo <- moduleInfo()
 initGenDefaults <- lapply(initpropInfo, function(prop){ prop$default })
+initFilePathType <- propsInfoForType(initpropInfo, "file path")
 
 volumes <- c(Home = fs::path_home())
 
@@ -260,6 +261,9 @@ server <- function(input, output, session) {
     # break out properties into categories
     groupedProps <- reactiveVal( groupPropsByCategory(initpropInfo) )
     
+    # TODO: make this update if jar file is updated
+    filePathProps <- reactiveVal( initFilePathType )
+    
 
     #############################         Dynamic UI           #########################################
     # Defining the UI.  This would be in the ui function... but its dynamic.
@@ -375,21 +379,21 @@ server <- function(input, output, session) {
                                  shinyFeedback::showFeedbackWarning( propUiName(propName), "not good" )
                              }
                          })
-                         
-                         ###
-                         if (genPropInfo()[[propName]]$type == "file path"){
-                             # buildChoosers(session, input, propName, projectDirPath(), volumes)
-                             buildFilePathPropObservers(session, input, output, propName, volumes, values)
-                         }
-                         
-                         
-                         ###
                          propUI
                      }))
         })
         argsList$selected = "input"
         argsList$id = "genPropsTabSet"
         do.call(tabsetPanel, argsList)
+    })
+    
+    observeEvent(projectDirPath(), {
+        for (prop in filePathProps()){
+            propName = prop$property
+            if ( projectDirPath() == "" ){ myVolumes = volumes
+            }else{ myVolumes = c(project=projectDirPath(), volumes) }
+            buildFilePathPropObservers(session, input, output, propName, myVolumes, values)
+        }
     })
     
     
