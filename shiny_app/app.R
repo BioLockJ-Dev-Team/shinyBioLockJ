@@ -22,7 +22,7 @@ library(shinyFiles)
 library(shinyFeedback)
 source('biolockj.R')
 source('biolockj_gui_bridge.R')
-source('propertiesDynamicUI.R')
+# source('propertiesDynamicUI.R')
 
 
 #############################      initial JAVA calls      #########################################
@@ -219,6 +219,8 @@ ui <-  fluidPage(
 
 server <- function(input, output, session) {
     
+    source('propertiesDynamicUI.R')
+    
     #############################         Core Objects         #########################################
 
     ## Use reactive objects as the single source of truth.
@@ -373,6 +375,15 @@ server <- function(input, output, session) {
                                  shinyFeedback::showFeedbackWarning( propUiName(propName), "not good" )
                              }
                          })
+                         
+                         ###
+                         if (genPropInfo()[[propName]]$type == "file path"){
+                             # buildChoosers(session, input, propName, projectDirPath(), volumes)
+                             buildFilePathPropObservers(session, input, output, propName, volumes, values)
+                         }
+                         
+                         
+                         ###
                          propUI
                      }))
         })
