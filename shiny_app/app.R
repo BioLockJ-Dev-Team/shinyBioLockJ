@@ -35,6 +35,7 @@ initpropInfo <- propInfoSansSpecials()
 initmoduleInfo <- moduleInfo()
 initGenDefaults <- lapply(initpropInfo, function(prop){ prop$default })
 initFilePathType <- propsInfoForType(initpropInfo, "file path")
+initFileListType <- propsInfoForType(initpropInfo, "list of file paths")
 
 volumes <- c(Home = fs::path_home())
 
@@ -263,6 +264,10 @@ server <- function(input, output, session) {
     
     # TODO: make this update if jar file is updated
     filePathProps <- reactiveVal( initFilePathType )
+    fileListProps <- reactiveVal( initFileListType )
+    
+    # 
+    fileBins <- reactiveValues()
     
 
     #############################         Dynamic UI           #########################################
@@ -388,11 +393,13 @@ server <- function(input, output, session) {
     })
     
     observeEvent(projectDirPath(), {
+        if ( projectDirPath() == "" ){ myVolumes = volumes
+        }else{ myVolumes = c(project=projectDirPath(), volumes) }
         for (prop in filePathProps()){
-            propName = prop$property
-            if ( projectDirPath() == "" ){ myVolumes = volumes
-            }else{ myVolumes = c(project=projectDirPath(), volumes) }
-            buildFilePathPropObservers(session, input, output, propName, myVolumes, values)
+            buildFilePathPropObservers(session, input, output, prop$property, myVolumes, values)
+        }
+        for (prop in fileListProps()){
+            buildFileListPropObservers(session, input, output, prop$property, myVolumes, values, fileBins)
         }
     })
     
