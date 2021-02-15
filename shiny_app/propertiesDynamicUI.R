@@ -4,9 +4,6 @@
 # KNOWN_TYPES = {STRING_TYPE, BOOLEAN_TYPE, FILE_PATH, EXE_PATH, LIST_TYPE, FILE_PATH_LIST, INTEGER_TYPE, NUMERTIC_TYPE};
 # KNOWN_TYPES = {"string", "boolean", "file path", "executable", "list", "list of file paths", "integer", "numeric"};
 
-propertyValues <- reactiveValues()
-fileBins <- reactiveValues()
-
 # render general prop ui ####
 renderPropUi <- function(propName, prop, default, value, defaults){
     # message("Treating property ", propName, " as a ", prop$type, " property.")
@@ -39,7 +36,7 @@ renderPropUi <- function(propName, prop, default, value, defaults){
     }else if(prop$type == "file path"){
         inputObj <- buildFilePathPropUI(propName)
     }else if(prop$type == "list of file paths"){
-        inputObj <- buildFileListPropUI(propName)
+        inputObj <- buildFileListPropUI(propName, value)
     }else {
         inputObj <- textInput(inputId = uiName,
                               label = propName,
@@ -93,10 +90,16 @@ buildFilePathPropUI <- function(propName){
     )
 }
 
-buildFileListPropUI <- function(propName){
+buildFileListPropUI <- function(propName, value){
     # propName: a string, the name of the property
+    if (isWritableValue(value)){
+        choices = parseListProp(value)
+        names(choices) = basename(choices)
+    }else{
+        choices = c()
+    }
     tagList(
-        selectInput(propSelectFromId(propName), label=propName, multiple = TRUE, choices = c(), width = '100%'),
+        selectInput(propSelectFromId(propName), label=propName, multiple = TRUE, choices = choices, selected = choices, width = '100%'),
         shinyFiles::shinyFilesButton(id=propFileChooserId(propName), "add file", title = "select a file", multiple = TRUE, style = "margin-top: 1px;"),
         shinyFiles::shinyDirButton(id=propDirChooserId(propName), "add directory", title = "select a directory"),
     )
@@ -122,44 +125,48 @@ buildFilePathPropObservers <- function(session, input, output, propName, myVolum
     output[[propShowId(propName)]] <- renderText( values$pipelineProperties[[propName]] )
 }
 
-buildFileListPropObservers <- function(session, input, output, propName, myVolumesNow, values, fileBins){
+buildFileListPropObservers <- function(session, input, output, propName, myVolumesNow, values, fileListUpdates){
     shinyFileChoose(input, propFileChooserId(propName), roots = myVolumesNow, session = session)
     shinyDirChoose(input, propDirChooserId(propName), roots = myVolumesNow, session = session, restrictions = system.file(package = "base"))
     #
     observeEvent( input[[propFileChooserId(propName)]], {
         if (! is.integer(input[[propFileChooserId(propName)]])){
-            oldSet = fileBins[[propName]]
             newPath = parseFilePaths(myVolumesNow, input[[propFileChooserId(propName)]])$datapath
-            fileBins[[propName]] = c(oldSet, newPath)
+            choices = filePathChoices( values$pipelineProperties[[propName]], newPath)
+            updateSelectInput(session, propSelectFromId(propName), choices = choices, selected = choices)
         }
     })
     observeEvent( input[[propDirChooserId(propName)]], {
         if (! is.integer(input[[propDirChooserId(propName)]])){
-            oldSet = fileBins[[propName]]
             newPath = parseDirPath(myVolumesNow, input[[propDirChooserId(propName)]])
-            fileBins[[propName]] = c(oldSet, newPath)
+            choices = filePathChoices( values$pipelineProperties[[propName]], newPath)
+            updateSelectInput(session, propSelectFromId(propName), choices = choices, selected = choices)
         }
     })
-    choices = reactive({
-        message("making choices...")
-        if ( isWritableValue( fileBins[[propName]] ) ){
-            opts = fileBins[[propName]]
-            names(opts) <- basename(opts)
-            opts
-        }else{
-            c()
-        }
-    })
-    observeEvent(fileBins[[propName]], {
-        message("updating choice/selection/presentation")
-        newPath = fileBins[[propName]][length(fileBins[[propName]])]
-        updateSelectInput(session, propSelectFromId(propName), choices = choices(), 
-                          selected = c(values$pipelineProperties[[propName]], newPath))
-                          # label = paste0("(can be multiple) list of: ", length(values$pipelineProperties[[propName]])+1 ) )
-    })
+
     observeEvent(input[[propSelectFromId(propName)]], {
-        values$pipelineProperties[[propName]] = input[[propSelectFromId(propName)]]
+        values$pipelineProperties[[propName]] = printListProp( input[[propSelectFromId(propName)]] )
     })
+    observeEvent(fileListUpdates[[propName]], {
+        choices = filePathChoices(fileListUpdates[[propName]] )
+        updateSelectInput(session, propSelectFromId(propName), choices = choices, selected = choices)
+    })
+}
+
+filePathChoices = function(existing, newPath=NULL){
+    # existing: current string value given in properties
+    # newPath: optional, new path to add to list
+    if ( isWritableValue( existing ) ){
+        oldSet = parseListProp( existing )
+    }else{
+        oldSet = c()
+    }
+    if (!is.null(newPath)) opts = c(oldSet, newPath)
+    else opts = oldSet
+    if ( isWritableValue( opts ) ){
+        names(opts) <- basename(opts)
+    }
+    return(opts)
 }
 
 

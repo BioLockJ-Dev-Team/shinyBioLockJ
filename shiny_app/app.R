@@ -267,7 +267,7 @@ server <- function(input, output, session) {
     fileListProps <- reactiveVal( initFileListType )
     
     # 
-    fileBins <- reactiveValues()
+    fileListUpdates <- reactiveValues()
     
 
     #############################         Dynamic UI           #########################################
@@ -392,14 +392,24 @@ server <- function(input, output, session) {
         do.call(tabsetPanel, argsList)
     })
     
+    myVolumes = reactiveVal(volumes)
     observeEvent(projectDirPath(), {
-        if ( projectDirPath() == "" ){ myVolumes = volumes
-        }else{ myVolumes = c(project=projectDirPath(), volumes) }
+        if ( projectDirPath() == "" ){ 
+            myVolumes(volumes)
+        }else{ 
+            myVolumes( c(ProjectRoot=projectDirPath(), volumes) )
+        }
+    })
+    observeEvent(myVolumes(), {
+        refreshFileChoosers()
+    })
+    
+    refreshFileChoosers <- reactive({
         for (prop in filePathProps()){
-            buildFilePathPropObservers(session, input, output, prop$property, myVolumes, values)
+            buildFilePathPropObservers(session, input, output, prop$property, myVolumes(), values)
         }
         for (prop in fileListProps()){
-            buildFileListPropObservers(session, input, output, prop$property, myVolumes, values, fileBins)
+            buildFileListPropObservers(session, input, output, prop$property, myVolumes(), values, fileListUpdates)
         }
     })
     
@@ -793,9 +803,15 @@ server <- function(input, output, session) {
                 if ( propName %in% names(genPropInfo()) ){
                     # if input object is established, set through that
                     # otherwise, set value in pipelineProperties object Directly
-                    if (!is.null(input[[propName]])){
+                    if( !is.null(input[[propSelectFromId(propName)]]) ){
+                        # if rendered, file path list props go this way
+                        fileListUpdates[[propName]] = vals[propName]
+                    }else if (!is.null(input[[propUiName(propName)]])){
+                        # most props, if rendered, go this way
                         updateTextInput(session, propName, value = paste(vals[propName]))
-                    }else{
+                    }else{ 
+                        # file path props got this way, rendered or not
+                        # all props, if NOT rendered, go this way
                         values$pipelineProperties[[propName]] <- vals[propName]
                     }
                 }else{
