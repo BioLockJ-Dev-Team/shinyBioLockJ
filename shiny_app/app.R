@@ -22,7 +22,7 @@ library(shinyFiles)
 library(shinyFeedback)
 source('biolockj.R')
 source('biolockj_gui_bridge.R')
-# source('propertiesDynamicUI.R')
+source('propertiesDynamicUI.R')
 
 
 #############################      initial JAVA calls      #########################################
@@ -37,7 +37,7 @@ initGenDefaults <- lapply(initpropInfo, function(prop){ prop$default })
 initFilePathType <- propsInfoForType(initpropInfo, "file path")
 initFileListType <- propsInfoForType(initpropInfo, "list of file paths")
 
-volumes <- c(Home = fs::path_home())
+volumes <- c(Home = fs::path_home(), getVolumes()())
 
 #############################              UI              #########################################
 
@@ -221,15 +221,13 @@ ui <-  fluidPage(
 
 server <- function(input, output, session) {
     
-    source('propertiesDynamicUI.R')
-    
     #############################         Core Objects         #########################################
 
     ## Use reactive objects as the single source of truth.
     values <- reactiveValues(defaultProps=NA,
-                             moduleList=list(), 
+                             moduleList=vector("character"), 
                              customProps=list(), 
-                             removedModules=list(),
+                             removedModules=vector("character"),
                              ### IMPORTANT !
                              # GET the property values through this object; the pipelineProperties reactiveValues object
                              # SET the property values through the input$[propName] object
@@ -274,11 +272,21 @@ server <- function(input, output, session) {
     # Defining the UI.  This would be in the ui function... but its dynamic.
     
     # Home ####
+    
+    output$showProjectDir <- renderPrint(cat(projectDirPath()))
+    
+    observeEvent(input$projectRootDir,{
+        if (is.integer(input$projectRootDir)) {
+            message("No directory has been selected (shinyDirChoose)")
+        } else {
+            message("setting new value for project root...")
+            projectDirPath( parseDirPath(volumes, input$projectRootDir) )
+        }
+    })
+    
     output$configText <- renderPrint({
         cat(paste0(configLines(), collapse = "\n"))
     })
-    
-    # shinyFileSave(input, "saveConfigBtn", roots = volumes, session = session, restrictions = system.file(package = "base"))
     
     output$examples <- renderUI({
         examples = findExampleConfigs()
@@ -387,29 +395,38 @@ server <- function(input, output, session) {
                          propUI
                      }))
         })
+        refreshFileChoosers()
         argsList$selected = "input"
         argsList$id = "genPropsTabSet"
         do.call(tabsetPanel, argsList)
     })
     
-    myVolumes = reactiveVal(volumes)
-    observeEvent(projectDirPath(), {
-        if ( projectDirPath() == "" ){ 
-            myVolumes(volumes)
-        }else{ 
-            myVolumes( c(ProjectRoot=projectDirPath(), volumes) )
-        }
-    })
-    observeEvent(myVolumes(), {
-        refreshFileChoosers()
-    })
+    # myVolumes = reactiveVal(volumes)
+    ## This was effective at making the file/dir chooser window start at the project dir
+    ## But it had the terrible side-effect that if you set the project dir, and then opened 
+    ## the dir chooser, and selected something in the project root, the whole system would
+    ## crash with error:
+    # Warning: Error in : `path` must not have missing values
+    # * NAs found at 1 locations: 1
+    # 51: <Anonymous>
+    #
+    # So... we don't do this anymore.
+    # myVolumes = reactiveVal(c(Project=volumes["Home"], volumes))
+    # observeEvent(projectDirPath(), {
+    #     if ( projectDirPath() == "" ){
+    #         myVolumes( c(Project=volumes["Home"], volumes) )
+    #     }else{
+    #         myVolumes( c(Project=projectDirPath(), volumes) )
+    #     }
+    #     refreshFileChoosers()
+    # })
     
     refreshFileChoosers <- reactive({
         for (prop in filePathProps()){
-            buildFilePathPropObservers(session, input, output, prop$property, myVolumes(), values)
+            buildFilePathPropObservers(session, input, output, prop$property, volumes, values) #myVolumes()
         }
         for (prop in fileListProps()){
-            buildFileListPropObservers(session, input, output, prop$property, myVolumes(), values, fileListUpdates)
+            buildFileListPropObservers(session, input, output, prop$property, volumes, values, fileListUpdates) #myVolumes()
         }
     })
     
@@ -428,7 +445,6 @@ server <- function(input, output, session) {
                     column(3, actionButton(buttonId, "remove")))
                 observeEvent(input[[buttonId]],{
                     values$customProps[[cp]] <- NULL
-                    updateTabsetPanel(session, "genPropsTabSet", selected = "ADD MORE")
                 })
                 customPropUi
             })
@@ -502,19 +518,6 @@ server <- function(input, output, session) {
     # Settings ####
     
 
-    
-    output$showProjectDir <- renderPrint(cat(projectDirPath()))
-    
-    observeEvent(input$projectRootDir,{
-        if (is.integer(input$projectRootDir)) {
-            message("No directory has been selected (shinyDirChoose)")
-        } else {
-            message("setting new value for project root...")
-            projectDirPath( parseDirPath(volumes, input$projectRootDir) )
-        }
-    })
-    
-
     #############################       Button Actions         #########################################
     # define event handlers for buttons
     
@@ -527,7 +530,7 @@ server <- function(input, output, session) {
             configFileName()
         },
         content = function(file) {
-            writeLines(as.character(configLines()), file)
+            writeLines( configLines(), file)
         }
     )
     
@@ -578,7 +581,7 @@ server <- function(input, output, session) {
     
     observeEvent(input$saveConfigBtn, {
         message("Saving file to: ", saveAsPath())
-        writeLines(text = as.character(configLines()), saveAsPath())
+        writeLines(configLines(), saveAsPath())
         sessionHasSavedAs( c(isolate( sessionHasSavedAs() ), saveAsPath()))
     })
 
@@ -681,7 +684,7 @@ server <- function(input, output, session) {
             prevCheckBox = input$include_standard_defaults
             updateCheckboxInput(session, "include_standard_defaults", value=FALSE)
             tempFile = tempfile()
-            writeLines(as.character(configLines()), tempFile)
+            writeLines(configLines(), tempFile)
             # modify underlying state
             defaults$values = c()
             defaults$values = lapply(genPropInfo(), function(prop){ prop$default })
@@ -822,7 +825,7 @@ server <- function(input, output, session) {
     })
     
     configLines <- reactive({
-        lines = c()
+        lines = vector("character")
         if (input$include_biolockj_version){
             lines = c(lines, paste("# Updated using BioLockJ version:", bljVer()))
         }
