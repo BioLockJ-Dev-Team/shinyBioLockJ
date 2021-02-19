@@ -163,9 +163,7 @@ filePathChoices = function(existing, newPath=NULL){
     }
     if (!is.null(newPath)) opts = c(oldSet, newPath)
     else opts = oldSet
-    if ( isWritableValue( opts ) ){
-        names(opts) <- basename(opts)
-    }
+    names(opts) <- NULL
     return(opts)
 }
 
