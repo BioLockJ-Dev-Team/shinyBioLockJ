@@ -212,14 +212,15 @@ ui <-  fluidPage(
                                                     choiceValues = c("remote", "virtual", "local"), inline=TRUE, 
                                                     selected = envType ) ),
                      br(), 
+                     hr(),
                      h4("Core"),
                      strong("BioLockJ version: "),
-                     # p("Currently referencing BioLockJ version:"),
                      textOutput("bljVersion"),
                      br(),
-                     shinyFiles::shinyFilesButton("biolockjJarFile", "BioLockJ Jar File Location", "Choose jar file", multiple=FALSE, accept=c(".jar"), width='100%'),
-                     actionButton("updateJar", "update jar location"),
-                     verbatimTextOutput("showNewJarFile")
+                     uiOutput("coreSettings")
+                     # shinyFiles::shinyFilesButton("biolockjJarFile", "BioLockJ Jar File Location", "Choose jar file", multiple=FALSE, accept=c(".jar"), width='100%'),
+                     # actionButton("updateJar", "update jar location"),
+                     # verbatimTextOutput("showNewJarFile")
                  )),
         # Help ####
         tabPanel("Help",
@@ -259,6 +260,8 @@ server <- function(input, output, session) {
     projectDirPath <- reactiveVal("")
 
     jarFilePath <- reactiveVal( BioLockR::getBljJar() )
+    
+    extModsDir <- reactiveVal( "" )
     
     bljVer <- reactiveVal(initbljVer)
     
@@ -773,6 +776,18 @@ server <- function(input, output, session) {
     })
     
     # Settings ####
+    output$coreSettings <- renderUI({
+        tagList(
+            shinyFiles::shinyFilesButton("biolockjJarFile", "BioLockJ Jar File Location", "Choose jar file", multiple=FALSE),
+            shinyjs::disabled(actionButton("updateJar", "update jar location")),
+            verbatimTextOutput("showNewJarFile"),
+            br(),
+            shinyFiles::shinyDirButton("extMods", "External Modules Folder", "Choose directory", multiple=FALSE),
+            shinyjs::disabled(actionButton("updateMods", "update modules location")),
+            verbatimTextOutput("showNewExtMods"))
+    })
+    
+    # Settings - jar file ####
     newJar = reactiveVal("")
     shinyFiles::shinyFileChoose(input, "biolockjJarFile", roots = volumes)
     output$showNewJarFile <- renderPrint( cat(newJar()) )
@@ -825,10 +840,72 @@ server <- function(input, output, session) {
         # TODO: show spinner or progress bar or something to let the user know that a delay is expected.
          # update objects from java
         jarFilePath( BioLockR::getBljJar() )
-        bljVer(biolockjVersion())
-        allModuleInfo(moduleInfo()) 
+        bljVer(BioLockR::biolockjVersion())
+        allModuleInfo(BioLockR::moduleInfo()) 
         moduleRunLines(getModuleRunLines(allModuleInfo()))
         genPropInfo(propInfoSansSpecials())
+        #TODO: update modules properties
+    })
+    
+    # Settings - ext mods dir ####
+    
+    newModsDir = reactiveVal("")
+    shinyFiles::shinyDirChoose(input, "extMods", roots = volumes)
+    output$showNewExtMods <- renderPrint( cat(newModsDir()) )
+    
+    observeEvent(input$extMods, {
+        req(input$extMods)
+        if (!is.integer(input$extMods)){
+            newModsDir( parseDirPath(volumes, input$extMods) )
+            shinyjs::enable("updateMods")
+        }else{
+            newModsDir( "" )
+            shinyjs::disable("updateMods")
+        }
+    })
+    
+    modal_confirm_mods <- modalDialog(
+        "Althought much safer than changing the BioLockJ.jar path, this too may have unforseen effects.",
+        title = "Change the external modules directory ?",
+        footer = tagList(
+            actionButton("cancelMods", "Cancel"),
+            actionButton("setNewMods", "Use new path (this time)"),
+            shinyjs::disabled(actionButton("rememberSetNewMods", "Always use this new path", class = "btn btn-danger"))
+        )
+    )
+    
+    observeEvent(input$updateMods, {
+        showModal(modal_confirm_mods)
+    })
+    
+    observeEvent(input$cancelMods, {
+        message("JK, I don't want to change the mods dir.")
+        removeModal()
+    })
+    
+    observeEvent(input$setNewMods, {
+        removeModal()
+        message("Switching to mods dir, for this session.")
+        extModsDir( newModsDir() )
+        respondToUpdateMods()
+    })
+    
+    observeEvent(input$rememberSetNewMods, {
+        removeModal()
+        message("Switching to new mods dir, for this and future sessions.---JK I have no way of remembering!")
+        # TODO: set up way to remember this preference
+        extModsDir( newModsDir() )
+        respondToUpdateMods()
+    })
+    
+    respondToUpdateMods <- reactive({
+        # TODO: show spinner or progress bar or something to let the user know that a delay is expected.
+         # update objects from java
+        allModuleInfo( BioLockR::moduleInfo( externalModules=extModsDir() ) ) 
+        moduleRunLines( getModuleRunLines( allModuleInfo() ) )
+        message("There are now ", length( moduleRunLines() ), " modules available.")
+        updateSelectInput(session, "AddBioModule", choices=names(allModuleInfo()) )
+        #TODO: update modules properties
     })
     
     #############################           Actions            #########################################
