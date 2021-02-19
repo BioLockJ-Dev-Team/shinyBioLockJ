@@ -20,7 +20,7 @@ library(sortable)
 # install.packages('shinyFiles')
 library(shinyFiles)
 library(shinyFeedback)
-source('biolockj.R')
+library("BioLockR")
 source('biolockj_gui_bridge.R')
 source('propertiesDynamicUI.R')
 
@@ -30,9 +30,20 @@ source('propertiesDynamicUI.R')
 # IFF the user chooses to change the BioLockJ jar file, (which will a rare thing)
 # then the reactive values that store these are updated.
 
-initbljVer = biolockjVersion()
+tryCatch({
+    BioLockR::getBljJar()
+}, error=function(...){
+    BioLockR::setBljJar(file.path(getwd(), "BioLockJ", "dist", "BioLockJ.jar"), remember=TRUE, doublecheck = FALSE)
+})
+tryCatch({
+    BioLockR::getBljProj()
+}, error=function(...){
+    BioLockR::setBljProj(file.path(getwd(), "temp"), remember=TRUE, doublecheck = FALSE)
+})
+
+initbljVer = BioLockR::biolockjVersion()
 initpropInfo <- propInfoSansSpecials()
-initmoduleInfo <- moduleInfo()
+initmoduleInfo <- BioLockR::moduleInfo()
 initGenDefaults <- lapply(initpropInfo, function(prop){ prop$default })
 initFilePathType <- propsInfoForType(initpropInfo, "file path")
 initFileListType <- propsInfoForType(initpropInfo, "list of file paths")
@@ -382,7 +393,7 @@ server <- function(input, output, session) {
                              req(genPropInfo()[[propName]]$type != "boolean")
                              shinyFeedback::hideFeedback( propUiName(propName) )
                              req(input[[propUiName(propName)]] != "")
-                             isGood = isolate(isValidProp(propName, input[[propUiName(propName)]]))
+                             isGood = isolate(BioLockR::isValidProp(propName, input[[propUiName(propName)]]))
                              message("isGood: ", isGood)
                              if (is.na(isGood)){
                                  shinyFeedback::hideFeedback( propUiName(propName) )
@@ -640,7 +651,7 @@ server <- function(input, output, session) {
     observeEvent(input$populateExampleConfig, {
         message("The button got pushed, button: populateExampleConfig")
         existingLines( readLines( input$selectExample ) )
-        projectDirPath( file.path(getwd(), dirname(input$selectExample) ) )
+        projectDirPath( dirname(input$selectExample) )
         populateModules()
         populateProps()
         populateProjectName( basename( input$selectExample ) )
@@ -882,7 +893,7 @@ server <- function(input, output, session) {
     
     # Precheck
     precheckCommand <- reactive({
-        command = ifelse(input$callJavaDirectly, paste("java -jar", jarFilePath()), "biolockj")#"biolockj"
+        command = ifelse(input$callJavaDirectly, paste("java -jar", BioLockR::getBljJar()), "biolockj")
         if (input$checkPrecheck) command = paste(command, "--precheck-only")
         if (input$checkUnused) command = paste(command, "--unused-props")
         if (input$checkDocker) command = paste(command, "--docker")

@@ -161,24 +161,7 @@ isSharedProp <- function(propMods=modulePerProp(), propName, includeMods=unique(
 }
 
 readBljProps <- function(existingLines){
-    # Returns a list of 2:
-    #   defaultProps: the vector of values given by the pipeline.defaultProps list
-    #   properties: all properties other than pipeline.defaultProps
-    exProps = existingLines[ grep("^#", existingLines, invert = TRUE) ]
-    ret = list(defaultProps=c(), properties=c())
-    if ( any(grepl("=", exProps)) ){
-        splits = strsplit(exProps, split="=", fixed=TRUE)
-        splits = splits[which(sapply(splits, function(s){length(s) >= 2}))]
-        vals = sapply(splits, function(pair){trimws(paste0(pair[2:length(pair)], collapse=""))})
-        names(vals) = sapply(splits, function(pair){trimws(pair[1])})
-        #
-        ret$properties=vals[names(vals) != "pipeline.defaultProps"]
-        chainsTo = vals["pipeline.defaultProps"]
-        if ( !is.null(chainsTo) && !is.na(chainsTo) && !chainsTo==""){
-            ret$defaultProps = parseListProp(chainsTo)
-        }
-    }
-    return(ret)
+    BioLockR::extract_defautlProps(BioLockR::read_properties(existingLines))
 }
 
 orderDefaultPropFiles <- function(start, chain){
@@ -227,17 +210,7 @@ orderDefaultPropFiles <- function(start, chain){
     return(result)
 }
 
-parseListProp <- function(value){
-    # value - single string that is the property value
-    # returns a vector
-    trimws( unlist( strsplit( value, ",", fixed=TRUE) ) )
-}
-
-printListProp <- function(values){
-    paste(values, collapse=", ")
-}
-
-findExampleConfigs <- function(bljDir="BioLockJ"){
+findExampleConfigs <- function( bljDir = dirname(dirname(BioLockR::getBljJar())) ){
     examples = tryCatch({
         templatesDir = file.path(bljDir, "templates")
         examples = sapply(dir(templatesDir, include.dirs = TRUE, full.names = TRUE), 
@@ -254,7 +227,7 @@ findExampleConfigs <- function(bljDir="BioLockJ"){
 }
 
 isWritableValue <- function(value){
-    return( !is.null(value) && !is.na(value) && length(value) > 0 && nchar(value) > 0 )
+    BioLockR::isReadableValue(value)
 }
 
 writeFullPath <- function(path, projectDir){
