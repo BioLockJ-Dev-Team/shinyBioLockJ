@@ -218,17 +218,8 @@ ui <-  fluidPage(
                      textOutput("bljVersion"),
                      br(),
                      shinyFiles::shinyFilesButton("biolockjJarFile", "BioLockJ Jar File Location", "Choose jar file", multiple=FALSE, accept=c(".jar"), width='100%'),
-                     actionButton("updateJar", "update jar location", class="btn-danger"),
+                     actionButton("updateJar", "update jar location"),
                      verbatimTextOutput("showNewJarFile")
-                     # fluidRow(
-                     #            column(6, ),
-                     #            column(6, actionButton("updateJar", "update jar location", class="btn-danger", style = "margin-top: 25px;")))
-                     
-                     # ifelse(envType=="local",
-                     #        fluidRow(
-                     #            column(6, shinyFiles::shinyFilesButton("biolockjJarFile", "BioLockJ Jar File Location", "Choose jar file", multiple=FALSE, accept=c(".jar"), width='100%')),
-                     #            column(6, actionButton("updateJar", "update jar location", class="btn-danger", style = "margin-top: 25px;"))),
-                     #        "")
                  )),
         # Help ####
         tabPanel("Help",
@@ -788,29 +779,56 @@ server <- function(input, output, session) {
     
     observeEvent(input$biolockjJarFile, {
         req(input$biolockjJarFile)
-        req( !is.integer(input$biolockjJarFile) )
-        newJar( parseFilePaths(volumes, input$biolockjJarFile)$datapath[[1]] )
-        shinyjs::enable("updateJar")
+        if (!is.integer(input$biolockjJarFile)){
+            newJar( parseFilePaths(volumes, input$biolockjJarFile)$datapath[[1]] )
+            shinyjs::enable("updateJar")
+        }else{
+            newJar( "" )
+            shinyjs::disable("updateJar")
+        }
     })
     
+    modal_confirm_jar <- modalDialog(
+        "Switching to a different jar file may have unforeseen effects.",
+        title = "Change to a new BioLockJ.jar location?",
+        footer = tagList(
+            actionButton("cancelJar", "Cancel"),
+            actionButton("setNewJar", "Use new path (this time)"),
+            actionButton("rememberSetNewJar", "Always use this new path", class = "btn btn-danger")
+        )
+    )
+            
     observeEvent(input$updateJar, {
-        req(input$biolockjJarFile)
-        req( !is.integer(input$biolockjJarFile) )
-        # TODO: show spinner or progress bar or something to let the user know that a delay is expected.
-        # update objects from java
-        message("Using path: ", newJar())
+        showModal(modal_confirm_jar)
+    })
+    
+    observeEvent(input$cancelJar, {
+        message("JK, I don't want to change the jar file.")
+        removeModal()
+    })
+    
+    observeEvent(input$setNewJar, {
+        removeModal()
+        message("Switching to newJar path, for this session.")
         good = BioLockR::setBljJar( newJar(), remember = FALSE )
-        if (good){
-            jarFilePath( BioLockR::getBljJar() )
-            bljVer(biolockjVersion())
-            allModuleInfo(moduleInfo()) 
-            moduleRunLines(getModuleRunLines(allModuleInfo()))
-            genPropInfo(propInfoSansSpecials())
-            # TODO update defaults, including values of defaults$*[["standard"]]
-        }
-        # restore button to disabled
-        newJar("")
-        shinyjs::disable("updateJar")
+        if (good) respondToUpdateJar()
+    })
+    
+    observeEvent(input$rememberSetNewJar, {
+        removeModal()
+        message("Switching to newJar path, for this and future sessions.")
+        good = BioLockR::setBljJar( newJar(), remember = TRUE, doublecheck = FALSE )
+        if (good) respondToUpdateJar()
+    })
+    
+    respondToUpdateJar <- reactive({
+        # TODO: show spinner or progress bar or something to let the user know that a delay is expected.
+         # update objects from java
+        jarFilePath( BioLockR::getBljJar() )
+        bljVer(biolockjVersion())
+        allModuleInfo(moduleInfo()) 
+        moduleRunLines(getModuleRunLines(allModuleInfo()))
+        genPropInfo(propInfoSansSpecials())
     })
     
     #############################           Actions            #########################################
