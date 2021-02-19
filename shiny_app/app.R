@@ -50,6 +50,8 @@ initFileListType <- propsInfoForType(initpropInfo, "list of file paths")
 
 volumes <- c(Home = fs::path_home(), getVolumes()())
 
+envType = ifelse(isInDocker(), "remote", "local") #"remote", "virtual", or "local"
+
 #############################              UI              #########################################
 
 ui <-  fluidPage( 
@@ -67,35 +69,35 @@ ui <-  fluidPage(
                  p("navbar"),p("spacer"),
                  h1("BioLockJ Pipeline Builder"),
                  tabsetPanel(id="HomeTabs",
-                     tabPanel("Save to file",
-                              br(),
-                              textInput("projectName", "Project name", value="myPipeline", placeholder = "new project name"),
-                              p(),
-                              checkboxInput("include_standard_defaults", "include values that match defaults"),
-                              checkboxInput("include_biolockj_version", "include BioLockJ version"),
-                              shinyBS::tipify(checkboxInput("include_mid_progress", "include work-in-progress"), "include commented list of modules in Trash and their properties, See Modules", placement='right'),
-                              shinyBS::tipify(shinyjs::disabled(checkboxInput("checkRelPaths", "write relative file paths")), "requires project root directory", placement='right'),
-                              #
-                              fluidRow(
-                                  column(3, shinyFiles::shinyDirButton("projectRootDir", "Set Project Root Directory", "Select Project Root Directory")),
-                                  column(9, verbatimTextOutput("showProjectDir", placeholder=TRUE))
-                              ),
-                              fluidRow(
-                                  column(3, downloadButton("downloadData", "Download", width='80%')),
-                                  column(9, uiOutput("saveButton"))
-                              ),
-                              p(),
-                              verbatimTextOutput("configText", placeholder = TRUE)),
-                     tabPanel("Load from file",
-                              h2("Upoad an existing config file"),
-                              em("(optional)"),
-                              p(em("When you pull values from an existing file, the values from the file will replace anything configured here.")),
-                              fileInput("uploadExistingConfig", label="Upload an existing config file", accept = c(".properties", ".config")),
-                              shinyjs::disabled(actionButton("populateExistingConfig", "pull values")),
-                              uiOutput("LocalExistingConfig"),
-                              hr(),
-                              uiOutput("examples")
-                              )
+                             tabPanel("Save to file",
+                                      br(),
+                                      textInput("projectName", "Project name", value="myPipeline", placeholder = "new project name"),
+                                      p(),
+                                      checkboxInput("include_standard_defaults", "include values that match defaults"),
+                                      checkboxInput("include_biolockj_version", "include BioLockJ version"),
+                                      shinyBS::tipify(checkboxInput("include_mid_progress", "include work-in-progress"), "include commented list of modules in Trash and their properties, See Modules", placement='right'),
+                                      shinyBS::tipify(shinyjs::disabled(checkboxInput("checkRelPaths", "write relative file paths")), "requires project root directory", placement='right'),
+                                      #
+                                      fluidRow(
+                                          column(3, shinyFiles::shinyDirButton("projectRootDir", "Set Project Root Directory", "Select Project Root Directory")),
+                                          column(9, verbatimTextOutput("showProjectDir", placeholder=TRUE))
+                                      ),
+                                      fluidRow(
+                                          column(3, downloadButton("downloadData", "Download", width='80%')),
+                                          column(9, uiOutput("saveButton"))
+                                      ),
+                                      p(),
+                                      verbatimTextOutput("configText", placeholder = TRUE)),
+                             tabPanel("Load from file",
+                                      h2("Upoad an existing config file"),
+                                      em("(optional)"),
+                                      p(em("When you pull values from an existing file, the values from the file will replace anything configured here.")),
+                                      fileInput("uploadExistingConfig", label="Upload an existing config file", accept = c(".properties", ".config")),
+                                      shinyjs::disabled(actionButton("populateExistingConfig", "pull values")),
+                                      uiOutput("LocalExistingConfig"),
+                                      hr(),
+                                      uiOutput("examples")
+                             )
                  )
         ),
         # Modules ####
@@ -206,19 +208,27 @@ ui <-  fluidPage(
                      p("Control aspects of this user interface."),
                      h4("File access"),
                      shinyjs::disabled(radioButtons("radioServerType", "How should this interface access files?", 
-                                  choiceNames = list("remote server", "local virtual server", "local machine"), 
-                                  choiceValues = c("remote", "virtual", "local"), inline=TRUE, 
-                                  selected = ifelse(isInDocker(), "remote", "local")) ),
+                                                    choiceNames = list("remote server", "local virtual server", "local machine"), 
+                                                    choiceValues = c("remote", "virtual", "local"), inline=TRUE, 
+                                                    selected = envType ) ),
                      br(), 
                      h4("Core"),
                      strong("BioLockJ version: "),
                      # p("Currently referencing BioLockJ version:"),
                      textOutput("bljVersion"),
                      br(),
-                     fluidRow(
-                         column(6, fileInput("biolockjJarFile", "BioLockJ Jar File Location", accept=c(".jar"), width='100%')),
-                         column(6, actionButton("updateJar", "update jar location", class="btn-danger", style = "margin-top: 25px;"))),
-                     textOutput("textWarningOnUpdateJar")
+                     shinyFiles::shinyFilesButton("biolockjJarFile", "BioLockJ Jar File Location", "Choose jar file", multiple=FALSE, accept=c(".jar"), width='100%'),
+                     actionButton("updateJar", "update jar location", class="btn-danger"),
+                     verbatimTextOutput("showNewJarFile")
+                     # fluidRow(
+                     #            column(6, ),
+                     #            column(6, actionButton("updateJar", "update jar location", class="btn-danger", style = "margin-top: 25px;")))
+                     
+                     # ifelse(envType=="local",
+                     #        fluidRow(
+                     #            column(6, shinyFiles::shinyFilesButton("biolockjJarFile", "BioLockJ Jar File Location", "Choose jar file", multiple=FALSE, accept=c(".jar"), width='100%')),
+                     #            column(6, actionButton("updateJar", "update jar location", class="btn-danger", style = "margin-top: 25px;"))),
+                     #        "")
                  )),
         # Help ####
         tabPanel("Help",
@@ -257,7 +267,7 @@ server <- function(input, output, session) {
     
     projectDirPath <- reactiveVal("")
 
-    jarFilePath <- reactiveVal("BioLockJ/dist/BioLockJ.jar")
+    jarFilePath <- reactiveVal( BioLockR::getBljJar() )
     
     bljVer <- reactiveVal(initbljVer)
     
@@ -563,7 +573,9 @@ server <- function(input, output, session) {
             shinyjs::disabled(actionButton(id, "Save to Project Root Directory (requires Project Root)", icon = useIcon))
         }
     })
+    
     saveAsPath <- reactive( file.path(projectDirPath(), configFileName()) )
+    
     sessionHasSavedAs <- reactiveVal(c())
 
     savingFileWill <- reactive({
@@ -770,19 +782,35 @@ server <- function(input, output, session) {
     })
     
     # Settings ####
+    newJar = reactiveVal("")
+    shinyFiles::shinyFileChoose(input, "biolockjJarFile", roots = volumes)
+    output$showNewJarFile <- renderPrint( cat(newJar()) )
+    
+    observeEvent(input$biolockjJarFile, {
+        req(input$biolockjJarFile)
+        req( !is.integer(input$biolockjJarFile) )
+        newJar( parseFilePaths(volumes, input$biolockjJarFile)$datapath[[1]] )
+        shinyjs::enable("updateJar")
+    })
+    
     observeEvent(input$updateJar, {
         req(input$biolockjJarFile)
+        req( !is.integer(input$biolockjJarFile) )
         # TODO: show spinner or progress bar or something to let the user know that a delay is expected.
         # update objects from java
-        jarFilePath(input$biolockjJarFile$datapath) #TODO: gather external path
-        bljVer(biolockjVersion())
-        allModuleInfo(moduleInfo()) 
-        moduleRunLines(getModuleRunLines(allModuleInfo()))
-        genPropInfo(propInfoSansSpecials())
-        # TODO update defaults, including values of defaults$*[["standard"]]
+        message("Using path: ", newJar())
+        good = BioLockR::setBljJar( newJar(), remember = FALSE )
+        if (good){
+            jarFilePath( BioLockR::getBljJar() )
+            bljVer(biolockjVersion())
+            allModuleInfo(moduleInfo()) 
+            moduleRunLines(getModuleRunLines(allModuleInfo()))
+            genPropInfo(propInfoSansSpecials())
+            # TODO update defaults, including values of defaults$*[["standard"]]
+        }
         # restore button to disabled
+        newJar("")
         shinyjs::disable("updateJar")
-        output$textWarningOnUpdateJar <- renderText("")
     })
     
     #############################           Actions            #########################################
@@ -1009,14 +1037,6 @@ server <- function(input, output, session) {
     
     observeEvent(input$extModsDir, {
         shinyjs::enable("updateJar")
-        output$textWarningOnUpdateJar <- renderText("This could cause major changes.")
-    })
-    
-    observeEvent(input$biolockjJarFile, {
-        output$textWarningOnUpdateJar <- renderText("")
-        req(input$biolockjJarFile)
-        shinyjs::enable("updateJar")
-        output$textWarningOnUpdateJar <- renderText("This could cause major changes.")
     })
     
     output$precheckCommand <- renderText(precheckCommand())
