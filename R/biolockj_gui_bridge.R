@@ -1,13 +1,19 @@
-
-#
-# biolockj.R represents assumptions based on the biolockj help page and the biolockj-api help page.
-# It should be updated anytime there is a change to the api that warrants updating the help page.
-# It should be robust to under-the-hood changes that do not warrant changes in the help page.
-#
-# The gui requires some logic that makes assumptions BEYOND the basics that biolockj.R relies on.
-#
-# This set of functions represent additional assumptions.  
-
+#' server helper functions
+#' 
+#' biolockj.R represents assumptions based on the biolockj help page and the biolockj-api help page.
+#' It should be updated anytime there is a change to the api that warrants updating the help page.
+#' It should be robust to under-the-hood changes that do not warrant changes in the help page.
+#'
+#' The gui requires some logic that makes assumptions BEYOND the basics that biolockj.R relies on.
+#'
+#' This set of functions represent additional assumptions. 
+#'
+#' @param moduleName 
+#' @param moduleRunLines 
+#' @param alias 
+#'
+#' @return
+#'
 makeRunLine <- function(moduleName, moduleRunLines, alias=""){
     className = moduleRunLines[moduleName]
     if ( nchar(alias) > 0 ) {
@@ -64,7 +70,7 @@ writeConfigProp <- function(propName, propVal=NULL, propType="string", projectDi
             if (propVal==TRUE || propVal == "Y" || propVal == "TRUE") result = "Y"
             line = paste(propName, "=", result)
         }else if(propType == "list"){
-            line = paste(propName, "=", printListProp(propVal) )
+            line = paste(propName, "=", BioLockR::printListProp(propVal) )
         }else if (propType == "file path"){
             line = paste(propName, "=", writeFilePath(propVal, projectDir, useRelPath ) )
         }else if(propType == "list of file paths"){
@@ -77,7 +83,7 @@ writeConfigProp <- function(propName, propVal=NULL, propType="string", projectDi
 }
 
 propInfoSansSpecials <- function(){
-    info = propInfo()
+    info = BioLockR::propInfo()
     # remove special properties that are set separately or 
     info[["biolockj.version"]] <- NULL # only meant to be set by running biolockj
     info[["pipeline.defaultProps"]] <- NULL # gui needs to actually upload files
@@ -176,7 +182,7 @@ orderDefaultPropFiles <- function(start, chain){
     result = list(missing=c(), dangling=c(), chained=c(start))
     if ( length(chain) == 0 || length(start) == 0 ) return(result)
     
-    message("start: ", printListProp(start), "; chain: ", chain)
+    message("start: ", BioLockR::printListProp(start), "; chain: ", chain)
     
     missingStarts = setdiff(start, names(chain))
     if (length(missingStarts) > 0){
@@ -210,7 +216,7 @@ orderDefaultPropFiles <- function(start, chain){
     return(result)
 }
 
-findExampleConfigs <- function( bljDir = dirname(dirname(BioLockR::getBljJar())) ){
+findExampleConfigs <- function( bljDir = dirname(dirname(BioLockR::get_BLJ_JAR())) ){
     examples = tryCatch({
         templatesDir = file.path(bljDir, "templates")
         examples = sapply(dir(templatesDir, include.dirs = TRUE, full.names = TRUE), 
@@ -222,7 +228,10 @@ findExampleConfigs <- function( bljDir = dirname(dirname(BioLockR::getBljJar()))
         examples = examples[ sapply(examples, function(e){ length(e) > 0}) ]
         names(examples) = basename(names(examples))
         examples
-    }, error=function(...){""})
+    }, error=function(...){
+        message("There was an error in getting the built-in examples.")
+        ""
+    })
     return(examples)
 }
 
@@ -272,12 +281,12 @@ writeFilePathList <- function(pathList, projectDir, useRelPath){
     # pathList - The value of a list property, probably represented as a single string
     # projectDir - the path that the paths should be relative to
     # useRelPath - if TRUE, relative paths are written, if false, then full paths are determined.
-    paths = parseListProp(pathList)
+    paths = BioLockR::parseListProp(pathList)
     newPaths = sapply(paths, writeFilePath, projectDir=projectDir, useRelPath=useRelPath)
     # if (useRelPath){
     #     newPaths = writeRelPath(paths, projectDir)
     # }else{
     #     newPaths = writeFullPath(paths, projectDir)
     # }
-    return(printListProp(newPaths))
+    return(BioLockR::printListProp(newPaths))
 }

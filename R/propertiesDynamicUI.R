@@ -1,9 +1,18 @@
-# PropertiesUI
-
-# As of this writing, the Properties class in BioLockJ has these KNOWN_TYPES:
-# KNOWN_TYPES = {STRING_TYPE, BOOLEAN_TYPE, FILE_PATH, EXE_PATH, LIST_TYPE, FILE_PATH_LIST, INTEGER_TYPE, NUMERTIC_TYPE};
-# KNOWN_TYPES = {"string", "boolean", "file path", "executable", "list", "list of file paths", "integer", "numeric"};
-
+#' BioLockJ Properties UI
+#'
+#' As of this writing, the Properties class in BioLockJ has these KNOWN_TYPES:
+#' KNOWN_TYPES = {STRING_TYPE, BOOLEAN_TYPE, FILE_PATH, EXE_PATH, LIST_TYPE, FILE_PATH_LIST, INTEGER_TYPE, NUMERTIC_TYPE};
+#' KNOWN_TYPES = {"string", "boolean", "file path", "executable", "list", "list of file paths", "integer", "numeric"};
+#' 
+#' @param propName 
+#' @param prop 
+#' @param default 
+#' @param value 
+#' @param defaults 
+#'
+#' @return
+#'
+#' 
 # render general prop ui ####
 renderPropUi <- function(propName, prop, default, value, defaults){
     # message("Treating property ", propName, " as a ", prop$type, " property.")
@@ -93,7 +102,7 @@ buildFilePathPropUI <- function(propName){
 buildFileListPropUI <- function(propName, value){
     # propName: a string, the name of the property
     if (isWritableValue(value)){
-        choices = parseListProp(value)
+        choices = BioLockR::parseListProp(value)
         names(choices) = basename(choices)
     }else{
         choices = c()
@@ -106,46 +115,46 @@ buildFileListPropUI <- function(propName, value){
 }
 
 buildFilePathPropObservers <- function(session, input, output, propName, myVolumesNow, values){
-    shinyFileChoose(input, propFileChooserId(propName), roots = myVolumesNow, session = session)
-    shinyDirChoose(input, propDirChooserId(propName), roots = myVolumesNow, session = session, restrictions = system.file(package = "base"))
+    shinyFiles::shinyFileChoose(input, propFileChooserId(propName), roots = myVolumesNow, session = session)
+    shinyFiles::shinyDirChoose(input, propDirChooserId(propName), roots = myVolumesNow, session = session, restrictions = system.file(package = "base"))
     #
     observeEvent(input[[propClearBtn(propName)]], {
         values$pipelineProperties[[propName]] = ""
     })
     observeEvent( input[[propFileChooserId(propName)]], {
         if (! is.integer(input[[propFileChooserId(propName)]])){
-            values$pipelineProperties[[propName]] = parseFilePaths(myVolumesNow, input[[propFileChooserId(propName)]])$datapath
+            values$pipelineProperties[[propName]] = shinyFiles::parseFilePaths(myVolumesNow, input[[propFileChooserId(propName)]])$datapath
         }
     })
     observeEvent( input[[propDirChooserId(propName)]], {
         if (! is.integer(input[[propDirChooserId(propName)]])){
-            values$pipelineProperties[[propName]] = parseDirPath(myVolumesNow, input[[propDirChooserId(propName)]])
+            values$pipelineProperties[[propName]] = shinyFiles::parseDirPath(myVolumesNow, input[[propDirChooserId(propName)]])
         }
     })
     output[[propShowId(propName)]] <- renderText( values$pipelineProperties[[propName]] )
 }
 
 buildFileListPropObservers <- function(session, input, output, propName, myVolumesNow, values, fileListUpdates){
-    shinyFileChoose(input, propFileChooserId(propName), roots = myVolumesNow, session = session)
-    shinyDirChoose(input, propDirChooserId(propName), roots = myVolumesNow, session = session, restrictions = system.file(package = "base"))
+    shinyFiles::shinyFileChoose(input, propFileChooserId(propName), roots = myVolumesNow, session = session)
+    shinyFiles::shinyDirChoose(input, propDirChooserId(propName), roots = myVolumesNow, session = session, restrictions = system.file(package = "base"))
     #
     observeEvent( input[[propFileChooserId(propName)]], {
         if (! is.integer(input[[propFileChooserId(propName)]])){
-            newPath = parseFilePaths(myVolumesNow, input[[propFileChooserId(propName)]])$datapath
+            newPath = shinyFiles::parseFilePaths(myVolumesNow, input[[propFileChooserId(propName)]])$datapath
             choices = filePathChoices( values$pipelineProperties[[propName]], newPath)
             updateSelectInput(session, propSelectFromId(propName), choices = choices, selected = choices)
         }
     })
     observeEvent( input[[propDirChooserId(propName)]], {
         if (! is.integer(input[[propDirChooserId(propName)]])){
-            newPath = parseDirPath(myVolumesNow, input[[propDirChooserId(propName)]])
+            newPath = shinyFiles::parseDirPath(myVolumesNow, input[[propDirChooserId(propName)]])
             choices = filePathChoices( values$pipelineProperties[[propName]], newPath)
             updateSelectInput(session, propSelectFromId(propName), choices = choices, selected = choices)
         }
     })
 
     observeEvent(input[[propSelectFromId(propName)]], {
-        values$pipelineProperties[[propName]] = printListProp( input[[propSelectFromId(propName)]] )
+        values$pipelineProperties[[propName]] = BioLockR::printListProp( input[[propSelectFromId(propName)]] )
     })
     observeEvent(fileListUpdates[[propName]], {
         choices = filePathChoices(fileListUpdates[[propName]] )
@@ -157,7 +166,7 @@ filePathChoices = function(existing, newPath=NULL){
     # existing: current string value given in properties
     # newPath: optional, new path to add to list
     if ( isWritableValue( existing ) ){
-        oldSet = parseListProp( existing )
+        oldSet = BioLockR::parseListProp( existing )
     }else{
         oldSet = c()
     }

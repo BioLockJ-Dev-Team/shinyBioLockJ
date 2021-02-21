@@ -1,3 +1,11 @@
+#' BioLockJ server.R
+#'
+#' @param input 
+#' @param output 
+#' @param session 
+#'
+#' @return server function
+#'
 biolockj_server <- function(input, output, session){
     
     envType = detect_deployment()
@@ -26,7 +34,7 @@ biolockj_server <- function(input, output, session){
     initFilePathType <- propsInfoForType(initpropInfo, "file path")
     initFileListType <- propsInfoForType(initpropInfo, "list of file paths")
     
-    volumes <- c(Home = fs::path_home(), getVolumes()())
+    volumes <- c(Home = fs::path_home(), shinyFiles::getVolumes()())
     
     #############################            SERVER            #########################################
     
@@ -90,10 +98,10 @@ biolockj_server <- function(input, output, session){
         
         observeEvent(input$projectRootDir,{
             if (is.integer(input$projectRootDir)) {
-                message("No directory has been selected (shinyDirChoose)")
+                message("No directory has been selected.")
             } else {
                 message("setting new value for project root...")
-                projectDirPath( parseDirPath(volumes, input$projectRootDir) )
+                projectDirPath( shinyFiles::parseDirPath(volumes, input$projectRootDir) )
             }
         })
         
@@ -103,10 +111,12 @@ biolockj_server <- function(input, output, session){
         
         output$examples <- renderUI({
             examples = findExampleConfigs()
+            select = "BioLockJ/templates/myFirstPipeline/myFirstPipeline.config"
+            if (examples=="") select = ""
             tagList(
                 h2("Pull from an example config file"),
                 selectInput("selectExample", "Select an example", choices = examples, 
-                            selected="BioLockJ/templates/myFirstPipeline/myFirstPipeline.config"),
+                            selected=select),
                 actionButton("populateExampleConfig", "pull values")
             )
         })
@@ -118,7 +128,7 @@ biolockj_server <- function(input, output, session){
             chainInfo = orderDefaultPropFiles(start=input$selectDefaultProps, chain=defaults$defaultPropsChain)
             if (length(chainInfo$dangling) > 0){
                 shinyjs::disable("loadDefaultProps")
-                shinyFeedback::showFeedbackWarning("selectDefaultProps", paste("Missing file:", printListProp(chainInfo$missing)) )
+                shinyFeedback::showFeedbackWarning("selectDefaultProps", paste("Missing file:", BioLockR::printListProp(chainInfo$missing)) )
             }else{
                 shinyjs::enable("loadDefaultProps")
                 shinyFeedback::showFeedbackSuccess("selectDefaultProps")
@@ -160,18 +170,18 @@ biolockj_server <- function(input, output, session){
         })
         
         output$manageModules <- renderUI({
-            bucket_list(
+            sortable::bucket_list(
                 header="BioModule Run Order",
-                add_rank_list(
+                sortable::add_rank_list(
                     text = "Drag and drop to re-order",
                     labels = values$moduleList,
                     input_id = "orderModules",
-                    options = sortable_options(multiDrag = TRUE)),
-                add_rank_list(
+                    options = sortable::sortable_options(multiDrag = TRUE)),
+                sortable::add_rank_list(
                     text="Trash",
                     labels = values$removedModules,
                     input_id = "trashModules",
-                    options = sortable_options(multiDrag = TRUE)),
+                    options = sortable::sortable_options(multiDrag = TRUE)),
                 orientation="vertical")
         })
         
@@ -403,11 +413,11 @@ biolockj_server <- function(input, output, session){
         # Home - load config ####
         output$LocalExistingConfig <- renderUI({
             if (input$radioServerType == "local"){
-                shinyFileChoose(input, "LocalExistingConfig", roots = volumes, session = session)
+                shinyFiles::shinyFileChoose(input, "LocalExistingConfig", roots = volumes, session = session)
                 tagList(
                     hr(),
                     h2("Load an existing config file"),
-                    shinyFilesButton("LocalExistingConfig", "Choose a local config file", "Please select a file", multiple = FALSE, viewtype = "list"),
+                    shinyFiles::shinyFilesButton("LocalExistingConfig", "Choose a local config file", "Please select a file", multiple = FALSE, viewtype = "list"),
                     p(),
                     verbatimTextOutput("showLocalFile", placeholder=TRUE),
                     shinyjs::disabled(actionButton("populateFromLocalConfig", "pull values"))
@@ -423,7 +433,7 @@ biolockj_server <- function(input, output, session){
             }
         })
         localFilePath <- reactive({
-            prsd = parseFilePaths(volumes, input$LocalExistingConfig)
+            prsd = shinyFiles::parseFilePaths(volumes, input$LocalExistingConfig)
             prsd$datapath
         })
         
@@ -493,7 +503,7 @@ biolockj_server <- function(input, output, session){
             chainInfo = orderDefaultPropFiles(start=input$selectDefaultProps, chain=defaults$defaultPropsChain)
             if (length(chainInfo$dangling) > 0){
                 shinyjs::disable("loadDefaultProps")
-                shinyFeedback::showFeedbackDanger("selectDefaultProps", c("Missing file: ", printListProp(chainInfo$missing)))
+                shinyFeedback::showFeedbackDanger("selectDefaultProps", c("Missing file: ", BioLockR::printListProp(chainInfo$missing)))
             }else{
                 # save state
                 prevCheckBox = input$include_standard_defaults
@@ -593,7 +603,7 @@ biolockj_server <- function(input, output, session){
         observeEvent(input$biolockjJarFile, {
             req(input$biolockjJarFile)
             if (!is.integer(input$biolockjJarFile)){
-                newJar( parseFilePaths(volumes, input$biolockjJarFile)$datapath[[1]] )
+                newJar( shinyFiles::parseFilePaths(volumes, input$biolockjJarFile)$datapath[[1]] )
                 shinyjs::enable("updateJar")
             }else{
                 newJar( "" )
@@ -654,7 +664,7 @@ biolockj_server <- function(input, output, session){
         observeEvent(input$extMods, {
             req(input$extMods)
             if (!is.integer(input$extMods)){
-                newModsDir( parseDirPath(volumes, input$extMods) )
+                newModsDir( shinyFiles::parseDirPath(volumes, input$extMods) )
                 shinyjs::enable("updateMods")
             }else{
                 newModsDir( "" )

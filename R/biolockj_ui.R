@@ -1,3 +1,7 @@
+#' BioLockJ ui.R
+#'
+#' @return the shiny ui object
+#'
 biolockj_ui <- function(){
     
     envType = detect_deployment()
