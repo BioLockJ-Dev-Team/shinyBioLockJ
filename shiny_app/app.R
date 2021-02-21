@@ -24,6 +24,10 @@ library("BioLockR")
 source('biolockj_gui_bridge.R')
 source('propertiesDynamicUI.R')
 
+if (numeric_version( packageVersion("BioLockR") ) < numeric_version("0.0.0.9001") ){
+    stop("Requires BioLockR pakcage version 0.0.0.9001 or later.")
+}
+
 
 #############################      initial JAVA calls      #########################################
 # Run these calls before starting so these bulk values are available.
@@ -31,14 +35,14 @@ source('propertiesDynamicUI.R')
 # then the reactive values that store these are updated.
 
 tryCatch({
-    BioLockR::getBljJar()
+    BioLockR::get_BLJ_JAR()
 }, error=function(...){
-    BioLockR::setBljJar(file.path(getwd(), "BioLockJ", "dist", "BioLockJ.jar"), remember=TRUE, doublecheck = FALSE)
+    BioLockR::set_BLJ_JAR(file.path(getwd(), "BioLockJ", "dist", "BioLockJ.jar"), remember=TRUE, doublecheck = FALSE)
 })
 tryCatch({
-    BioLockR::getBljProj()
+    BioLockR::get_BLJ_PROJ()
 }, error=function(...){
-    BioLockR::setBljProj(file.path(getwd(), "temp"), remember=TRUE, doublecheck = FALSE)
+    BioLockR::set_BLJ_PROJ(file.path(getwd(), "temp"), remember=TRUE, doublecheck = FALSE)
 })
 
 initbljVer = BioLockR::biolockjVersion()
@@ -259,7 +263,7 @@ server <- function(input, output, session) {
     
     projectDirPath <- reactiveVal("")
 
-    jarFilePath <- reactiveVal( BioLockR::getBljJar() )
+    jarFilePath <- reactiveVal( BioLockR::get_BLJ_JAR() )
     
     extModsDir <- reactiveVal( "" )
     
@@ -825,21 +829,21 @@ server <- function(input, output, session) {
     observeEvent(input$setNewJar, {
         removeModal()
         message("Switching to newJar path, for this session.")
-        good = BioLockR::setBljJar( newJar(), remember = FALSE )
+        good = BioLockR::set_BLJ_JAR( newJar(), remember = FALSE )
         if (good) respondToUpdateJar()
     })
     
     observeEvent(input$rememberSetNewJar, {
         removeModal()
         message("Switching to newJar path, for this and future sessions.")
-        good = BioLockR::setBljJar( newJar(), remember = TRUE, doublecheck = FALSE )
+        good = BioLockR::set_BLJ_JAR( newJar(), remember = TRUE, doublecheck = FALSE )
         if (good) respondToUpdateJar()
     })
     
     respondToUpdateJar <- reactive({
         # TODO: show spinner or progress bar or something to let the user know that a delay is expected.
          # update objects from java
-        jarFilePath( BioLockR::getBljJar() )
+        jarFilePath( BioLockR::get_BLJ_JAR() )
         bljVer(BioLockR::biolockjVersion())
         allModuleInfo(BioLockR::moduleInfo()) 
         moduleRunLines(getModuleRunLines(allModuleInfo()))
@@ -1016,7 +1020,7 @@ server <- function(input, output, session) {
     
     # Precheck
     precheckCommand <- reactive({
-        command = ifelse(input$callJavaDirectly, paste("java -jar", BioLockR::getBljJar()), "biolockj")
+        command = ifelse(input$callJavaDirectly, paste("java -jar", BioLockR::get_BLJ_JAR()), "biolockj")
         if (input$checkPrecheck) command = paste(command, "--precheck-only")
         if (input$checkUnused) command = paste(command, "--unused-props")
         if (input$checkDocker) command = paste(command, "--docker")
