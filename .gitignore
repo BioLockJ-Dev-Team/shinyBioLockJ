@@ -4,11 +4,11 @@
 **/pipelines/*
 pipelines/*
 */temp/*
-shiny_app/BioLockJ/**
+shiny_BioLockJ/BioLockJ/**
 
 # The jar file is in the folder for publishing to shiny io
-shiny_app/BioLockJ/dist/BioLockJ.jar
-shiny_app/rsconnect/*
+shiny_BioLockJ/BioLockJ/dist/BioLockJ.jar
+shiny_BioLockJ/rsconnect/*
 
 # History files
 .Rhistory

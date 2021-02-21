@@ -20,14 +20,16 @@ library(sortable)
 # install.packages('shinyFiles')
 library(shinyFiles)
 library(shinyFeedback)
-library("BioLockR")
-source('biolockj_gui_bridge.R')
-source('propertiesDynamicUI.R')
 
+# install_github("IvoryC/BioLockR")
+library("BioLockR")
 if (numeric_version( packageVersion("BioLockR") ) < numeric_version("0.0.0.9001") ){
     stop("Requires BioLockR pakcage version 0.0.0.9001 or later.")
 }
 
+#############################          Sources          #########################################
+source('biolockj_gui_bridge.R')
+source('propertiesDynamicUI.R')
 
 #############################      initial JAVA calls      #########################################
 # Run these calls before starting so these bulk values are available.
