@@ -3,12 +3,11 @@
 # Don't save local pipelines in git
 **/pipelines/*
 pipelines/*
-*/temp/*
-shinyBioLockJ/BioLockJ/**
+**/temp/**
 
 # The jar file is in the folder for publishing to shiny io
-shinyBioLockJ/BioLockJ/dist/BioLockJ.jar
-shinyBioLockJ/rsconnect/*
+BioLockJ/**
+rsconnect/*
 
 # History files
 .Rhistory
