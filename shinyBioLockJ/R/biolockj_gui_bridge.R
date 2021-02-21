@@ -8,7 +8,7 @@
 #
 # This set of functions represent additional assumptions.  
 
-makeRunLine <- function(moduleName, alias=""){
+makeRunLine <- function(moduleName, moduleRunLines, alias=""){
     className = moduleRunLines[moduleName]
     if ( nchar(alias) > 0 ) {
         runLine = paste(className, "AS", alias)

@@ -520,7 +520,7 @@ biolockj_server <- function(input, output, session){
         
         # Module ####
         observeEvent(input$AddModuleButton, {
-            runLine = makeRunLine(input$AddBioModule, input$newAlias)
+            runLine = makeRunLine(input$AddBioModule, moduleRunLines(), input$newAlias)
             msg = capture.output({
                 goodAlias = isValidAlias(aliasFromRunline(runLine), allActiveAliases())
             }, type="message")
@@ -876,7 +876,7 @@ biolockj_server <- function(input, output, session){
         
         # placeholder of new alias shows the current implied alias
         showDefaultAlias <- reactive({
-            possibleLine = makeRunLine(input$AddBioModule, input$newAlias)
+            possibleLine = makeRunLine(input$AddBioModule, moduleRunLines(), input$newAlias)
             derivedAlias = aliasFromRunline( possibleLine )
         })
         setDefaultAliasPlaceholder <- reactive({
@@ -901,7 +901,7 @@ biolockj_server <- function(input, output, session){
         # green for valid alias
         observeEvent(showDefaultAlias(), {
             shinyFeedback::hideFeedback("newAlias")
-            runLine = makeRunLine(input$AddBioModule, input$newAlias)
+            runLine = makeRunLine(input$AddBioModule, moduleRunLines(), input$newAlias)
             msg = capture.output({
                 goodAlias = isValidAlias(aliasFromRunline(runLine), allActiveAliases())
             }, type="message")
