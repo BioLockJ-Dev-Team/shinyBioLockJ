@@ -477,7 +477,8 @@ biolockj_server <- function(input, output, session){
             message("Event: input$defaultPropsFiles")
             req(input$defaultPropsFiles)
             for (i in 1:nrow(input$defaultPropsFiles)){
-                allProps = readBljProps(readLines(input$defaultPropsFiles$datapath[i]))
+                lines = readLines(input$defaultPropsFiles$datapath[i])
+                allProps = BioLockR::extract_defautlProps(BioLockR::read_properties( lines ))
                 if ( length(allProps$defaultProps)==0 || input$ignoreChain){
                     defaults$defaultPropsChain[input$defaultPropsFiles$name[i]] = NA
                 }else{
@@ -738,7 +739,7 @@ biolockj_server <- function(input, output, session){
         })
         
         populateProps <- reactive({
-            newProps = readBljProps( existingLines() )
+            newProps = BioLockR::extract_defautlProps(BioLockR::read_properties( existingLines() ))
             values$defaultProps = newProps$defaultProps
             vals = newProps$properties
             if (length(vals) > 0 ){

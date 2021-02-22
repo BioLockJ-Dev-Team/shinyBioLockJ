@@ -9,7 +9,7 @@
 #' @return no return value
 #' 
 #' @export
-#'
+#' 
 #' @examples
 #' # shiny_biolockj()
 #' 

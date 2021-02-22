@@ -13,9 +13,9 @@ shiny_biolockj(...)
 no return value
 }
 \description{
-shiny biolockj
+This is the essential launch command for the shiny app.
 }
 \examples{
-shiny_biolockj()
+# shiny_biolockj()
 
 }

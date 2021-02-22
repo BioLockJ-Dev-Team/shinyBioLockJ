@@ -13,7 +13,3 @@ string, one of "remote", "virtual", or "local"
 Determine if the the app is running on a local machine, on a virtual
 machine (ie, from a docker container) or from a host such as shiny.io
 }
-\examples{
-detect_deployment()
-
-}

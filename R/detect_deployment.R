@@ -5,8 +5,6 @@
 #'
 #' @return string, one of "remote", "virtual", or "local"
 #'
-#' @examples
-#' detect_deployment()
 #' 
 detect_deployment <- function(){
     envType = ifelse(isInDocker(), "remote", "local") 
