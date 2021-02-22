@@ -1,4 +1,7 @@
 # shinyBioLockJ
+
+![shinyBioLockJ](https://user-images.githubusercontent.com/8933011/108736478-a80f7580-74ff-11eb-81ee-fd649cfb6637.png)
+
 A GUI for BioLockJ implemented in R shiny
 
 ## Getting Started
@@ -40,3 +43,5 @@ This will open the app in your web browser.
  3. click the button "Run App".
 
 This will open the app in an RStudio window.
+
+The app may appear differently when hosted on a remote server, but either method of locally launching it should produce the same result.
