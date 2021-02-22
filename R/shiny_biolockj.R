@@ -8,31 +8,13 @@
 #'
 #' @return no return value
 #' 
-#' 
-#' @examples
-#' # shiny_biolockj()
+#' @export
 #' 
 shiny_biolockj <- function(...) {
-    # Plus other stuff that was previously in app.R
-    # Hopefully refactored in a few function calls
-    
-    #############################          Libraries          #########################################
-    # # install_github("IvoryC/BioLockR")
-    # library("BioLockR")
-    # if (numeric_version( packageVersion("BioLockR") ) < numeric_version("0.0.0.9001") ){
-    #     stop("Requires BioLockR pakcage version 0.0.0.9001 or later.")
-    # }
 
-    #############################              UI              #########################################
     ui = biolockj_ui()
     
     server <- biolockj_server(input, output, session)
-    
-    #############################            Notes            #########################################
-    
-    # Collapse all sections: cmd + alt + O
-    # Expand all sections: shift + cmd + alt + O
-    
     
     # Run the application ####
     # Supress Shiny's auto-load behaviour
