@@ -1,6 +1,6 @@
 # shinyBioLockJ
 
-![shinyBioLockJ](https://user-images.githubusercontent.com/8933011/108736478-a80f7580-74ff-11eb-81ee-fd649cfb6637.png)
+<img src="https://user-images.githubusercontent.com/8933011/108736478-a80f7580-74ff-11eb-81ee-fd649cfb6637.png" width="500">
 
 A GUI for BioLockJ implemented in R shiny
 
