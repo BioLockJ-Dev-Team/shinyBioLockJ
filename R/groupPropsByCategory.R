@@ -2,10 +2,10 @@
 #'
 #' The portion of a property name that comes before the first '.' is (generally) its category.
 #'
-#' @param propInfo 
+#' @param propInfo the return value fo BioLockR::propInfo(), or a similarly structured list
 #'
-#' @return
-#'
+#' @return category portion fo the property
+#' 
 groupPropsByCategory <- function(propInfo) { 
     props = names(propInfo)
     splits = strsplit(props, split = ".", fixed = TRUE)

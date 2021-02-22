@@ -15,8 +15,3 @@ the alias
 \description{
 Derive the module Alias from a given runline
 }
-\examples{
-line = "#BioModule path/to/class/for/dostuff AS MyStuff"
-aliasFromRunline()
-#> "MyStuff"
-}

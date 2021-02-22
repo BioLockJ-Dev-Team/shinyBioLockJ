@@ -7,7 +7,6 @@
 #' @param response the output of the precheck command to biolockj
 #'
 #' @return isBadPrecheckResponse: boolean, TRUE if the response is BAD
-#' 
 #'
 isBadPrecheckResponse <- function(response){
     badKey = "There is a problem with this pipeline configuration."

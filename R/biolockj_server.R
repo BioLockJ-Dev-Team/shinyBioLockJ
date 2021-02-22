@@ -1,8 +1,8 @@
 #' BioLockJ server.R
 #'
-#' @param input 
-#' @param output 
-#' @param session 
+#' @param input input=input
+#' @param output output=output
+#' @param session session=session
 #'
 #' @return server function
 #'
@@ -134,20 +134,20 @@ biolockj_server <- function(input, output, session){
                 shinyFeedback::showFeedbackSuccess("selectDefaultProps")
             }
             chainLinks = intersect(chainInfo$chained, names(defaults$defaultPropsChain))
-            df = stack(defaults$defaultPropsChain[chainLinks])
+            df = utils::stack(defaults$defaultPropsChain[chainLinks])
             names(df) = c("linksTo", "file")
             df[,c("file", "linksTo")]
         })
         
         output$chainableFiles <- renderTable({
             message("defaults[['defaultPropsChain']] : ", defaults[["defaultPropsChain"]])
-            message("defaults[['defaultPropsChain']] : ", str(defaults[["defaultPropsChain"]]))
+            message("defaults[['defaultPropsChain']] : ", utils::str(defaults[["defaultPropsChain"]]))
             if( length( defaults$defaultPropsChain ) > 0 ){
                 from = defaults$defaultPropsChain
             }else{
                 validate("If there is a chain of default properties, the links are listed here.")
             }
-            df = stack(from)
+            df = utils::stack(from)
             names(df) = c("linksTo", "file")
             df[,c("file", "linksTo")]
         })
@@ -291,7 +291,7 @@ biolockj_server <- function(input, output, session){
         })
         
         customDefaults <- reactive({
-            df = stack( sapply(names(defaults$values), function(p){strsplit(p, ".", fixed=TRUE)[[1]][1]}), stringsAsFactors=FALSE)
+            df = utils::stack( sapply(names(defaults$values), function(p){strsplit(p, ".", fixed=TRUE)[[1]][1]}), stringsAsFactors=FALSE)
             names(df) = c("prefix", "propName")
             df$prefix = as.character(df$prefix)
             df$propName = as.character(df$propName)
@@ -532,7 +532,7 @@ biolockj_server <- function(input, output, session){
         # Module ####
         observeEvent(input$AddModuleButton, {
             runLine = makeRunLine(input$AddBioModule, moduleRunLines(), input$newAlias)
-            msg = capture.output({
+            msg = utils::capture.output({
                 goodAlias = isValidAlias(aliasFromRunline(runLine), allActiveAliases())
             }, type="message")
             shinyFeedback::feedbackDanger("newAlias", !goodAlias, msg)
@@ -863,7 +863,7 @@ biolockj_server <- function(input, output, session){
             if (file.exists(input$uploadExistingConfig$datapath)){
                 shinyjs::enable("populateExistingConfig")
             }else{
-                shinyjs:disable("populateExistingConfig")
+                shinyjs::disable("populateExistingConfig")
             }
         })
         
@@ -871,7 +871,7 @@ biolockj_server <- function(input, output, session){
             if (file.exists(input$selectExample)){
                 shinyjs::enable("populateExampleConfig")
             }else{
-                shinyjs:disable("populateExampleConfig")
+                shinyjs::disable("populateExampleConfig")
             }
         })
         
@@ -913,7 +913,7 @@ biolockj_server <- function(input, output, session){
         observeEvent(showDefaultAlias(), {
             shinyFeedback::hideFeedback("newAlias")
             runLine = makeRunLine(input$AddBioModule, moduleRunLines(), input$newAlias)
-            msg = capture.output({
+            msg = utils::capture.output({
                 goodAlias = isValidAlias(aliasFromRunline(runLine), allActiveAliases())
             }, type="message")
             shinyFeedback::feedbackSuccess("newAlias", goodAlias)

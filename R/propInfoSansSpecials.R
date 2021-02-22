@@ -2,8 +2,8 @@
 #' 
 #' Get the properties from BioLockJ, but remove the properties that are not desired.
 #'
-#' @return
-#'
+#' @return similar to BioLockR::PropInfo()
+#' 
 propInfoSansSpecials <- function(){
     info = BioLockR::propInfo()
     info[["biolockj.version"]] <- NULL # only meant to be set by running biolockj

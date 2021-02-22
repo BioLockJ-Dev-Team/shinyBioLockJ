@@ -7,7 +7,7 @@
 propInfoSansSpecials()
 }
 \value{
-
+similar to BioLockR::PropInfo()
 }
 \description{
 Get the properties from BioLockJ, but remove the properties that are not desired.

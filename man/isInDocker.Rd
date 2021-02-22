@@ -6,6 +6,9 @@
 \usage{
 isInDocker()
 }
+\value{
+boolean
+}
 \description{
 Test for docker container
 }

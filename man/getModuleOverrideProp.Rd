@@ -17,7 +17,3 @@ the new property name
 \description{
 For a given module name/alias, and a given property, what would be the module-override property.
 }
-\examples{
-getModuleOverrideProp("Part3", "script.numThreads")
-#> [1] "Part3.numThreads"
-}

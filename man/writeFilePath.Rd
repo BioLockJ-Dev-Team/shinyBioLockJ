@@ -44,9 +44,3 @@ Paths can be passed in as EITHER relative to root or relative to project dir (ie
 \item \code{writeRelPath}: write the path from the project directory (ie, ./ or ../) if possible.
 }}
 
-\examples{
-writeFilePath("/Users/me/my/path/to/file.txt", "/Users/me/my/path", FALSE)
-#> [1] "/Users/me/my/path/to/file.txt"
-writeFilePath("/Users/me/my/path/to/file.txt", "/Users/me/my/path", TRUE)
-#> [1] "/Users/me/my/path/to/file.txt"
-}

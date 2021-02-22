@@ -18,7 +18,7 @@ renderPropUi(propName, prop, default, value, defaults)
 \item{defaults}{the list of lists of representation of defaults}
 }
 \value{
-
+ui object list
 }
 \description{
 As of this writing, the Properties class in BioLockJ has these KNOWN_TYPES:

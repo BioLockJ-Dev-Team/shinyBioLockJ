@@ -7,7 +7,7 @@
 findExampleConfigs(bljDir = dirname(dirname(BioLockR::get_BLJ_JAR())))
 }
 \arguments{
-\item{bljDir}{}
+\item{bljDir}{the BioLockJ directory, typically two levels up from BioLockJ.jar}
 }
 \value{
 

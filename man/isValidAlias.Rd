@@ -20,11 +20,3 @@ Test if an alias is usable for a BioLockJ pipeline module.
 \details{
 If false, a message is printed to stderr with explaination.
 }
-\examples{
-isValidAlias("foo")
-#> FALSE
-isValidAlias("Foo")
-#> TRUE
-isValidAlias("Foo", c("Foo", "Bar", "Baz"))
-#' #> FALSE
-}

@@ -6,7 +6,7 @@
 #' @param propName property in question
 #' @param includeMods the modules in the current pipeline
 #'
-#' @return
+#' @return boolean
 #' 
 isSharedProp <- function(propMods=modulePerProp(), propName, includeMods=unique(unlist(propMods))){
     propsMods = propMods[[propName]]

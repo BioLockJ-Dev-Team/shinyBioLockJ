@@ -12,11 +12,11 @@
 #' 
 #' @return a string representing the file path
 #'
-#' @examples
-#' writeFilePath("/Users/me/my/path/to/file.txt", "/Users/me/my/path", FALSE)
-#' #> [1] "/Users/me/my/path/to/file.txt"
-#' writeFilePath("/Users/me/my/path/to/file.txt", "/Users/me/my/path", TRUE)
-#' #> [1] "/Users/me/my/path/to/file.txt"
+# @examples
+# writeFilePath("/Users/me/my/path/to/file.txt", "/Users/me/my/path", FALSE)
+# #> [1] "/Users/me/my/path/to/file.txt"
+# writeFilePath("/Users/me/my/path/to/file.txt", "/Users/me/my/path", TRUE)
+# #> [1] "/Users/me/my/path/to/file.txt"
 writeFilePath <- function(path, projectDir, useRelPath){
     message("Formatting file path: ", path)
     if (useRelPath) message("relative to: ", projectDir)

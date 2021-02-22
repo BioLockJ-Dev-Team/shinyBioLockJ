@@ -14,14 +14,8 @@ makeRunLine(moduleName, moduleRunLines, alias = "")
 \item{alias}{optional alias}
 }
 \value{
-
+The line to include in a BioLockJ module run order
 }
 \description{
 Assemble the run line for a module
-}
-\examples{
-avail = c(dostuff="#BioModule path/to/class/for/dostuff",
-thing="#BioModule path/to/class/for/thing")
-makeRunLine("dostuff", avail, "MyStuff")
-#> [1] "#BioModule path/to/class/for/dostuff AS MyStuff"
 }

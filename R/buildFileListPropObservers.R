@@ -1,5 +1,14 @@
-#' 
+#'
 #' @describeIn buildFilePathPropUI Build/refresh the backend of the UI for a BioLockJ file list property
+#'
+#' @param session usually session=session
+#' @param input usually input=input
+#' @param output usually output=output
+#' @param myVolumesNow the volumes object to pass to shinyFiles operations
+#' @param values the list of lists reactive values object that represents the current configuration
+#' @param fileListUpdates a reactive values object that keeps the file list options per property
+#'
+#' @return
 #'
 buildFileListPropObservers <- function(session, input, output, propName, myVolumesNow, values, fileListUpdates){
     shinyFiles::shinyFileChoose(input, propFileChooserId(propName), roots = myVolumesNow, session = session)

@@ -7,11 +7,11 @@
 biolockj_server(input, output, session)
 }
 \arguments{
-\item{input}{}
+\item{input}{input=input}
 
-\item{output}{}
+\item{output}{output=output}
 
-\item{session}{}
+\item{session}{session=session}
 }
 \value{
 server function

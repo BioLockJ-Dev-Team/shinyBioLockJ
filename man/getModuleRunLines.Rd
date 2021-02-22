@@ -7,7 +7,7 @@
 getModuleRunLines(moduleInfo)
 }
 \arguments{
-\item{moduleInfo}{}
+\item{moduleInfo}{the return value of BioLockR::moduleInfo() or a similarly structured list}
 }
 \value{
 named vector

@@ -1,7 +1,7 @@
 #' Build UI for File Path Properties
 #'
 #' @describeIn buildFilePathPropUI Build the UI for a BioLockJ file property
-#'
+#' 
 #' @param propName a string, the name of the property
 #'
 #' @return ui object

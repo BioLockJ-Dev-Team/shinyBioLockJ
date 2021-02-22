@@ -4,8 +4,8 @@
 #'
 #' @return boolean
 #'
-#' @examples
-#' hasDockerCmd()
+# @examples
+# hasDockerCmd()
 hasDockerCmd <- function(){
     dockerVersion = tryCatch({
         system("docker --version", intern = TRUE)

@@ -12,6 +12,3 @@ boolean
 \description{
 Test if the docker command is available.
 }
-\examples{
-hasDockerCmd()
-}

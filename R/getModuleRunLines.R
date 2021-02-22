@@ -3,7 +3,7 @@
 #' Given a lis of module objects, such as that returned by BioLockJ::moduleInfo(), 
 #' create a named vector linking the simple class name to the usage line.
 #' 
-#' @param moduleInfo 
+#' @param moduleInfo the return value of BioLockR::moduleInfo() or a similarly structured list
 #'
 #' @return named vector
 #'

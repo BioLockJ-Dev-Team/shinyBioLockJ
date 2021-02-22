@@ -7,9 +7,9 @@
 #'
 #' @return the new property name
 #'
-#' @examples
-#' getModuleOverrideProp("Part3", "script.numThreads")
-#' #> [1] "Part3.numThreads"
+# @examples
+# getModuleOverrideProp("Part3", "script.numThreads")
+# #> [1] "Part3.numThreads"
 getModuleOverrideProp <- function(moduleAlias, propName){
     parts=strsplit(propName, split=".", fixed=TRUE)[[1]]
     parts[1] = moduleAlias

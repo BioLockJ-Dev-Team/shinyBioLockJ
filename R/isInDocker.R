@@ -1,5 +1,6 @@
 #' Test for docker container
-#'
+#' 
+#' @return boolean
 #'
 isInDocker <- function(){
     if (file.exists("/.dockerenv")){

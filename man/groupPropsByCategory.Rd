@@ -7,10 +7,10 @@
 groupPropsByCategory(propInfo)
 }
 \arguments{
-\item{propInfo}{}
+\item{propInfo}{the return value fo BioLockR::propInfo(), or a similarly structured list}
 }
 \value{
-
+category portion fo the property
 }
 \description{
 The portion of a property name that comes before the first '.' is (generally) its category.

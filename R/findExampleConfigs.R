@@ -4,7 +4,7 @@
 #' Examples are expected to be under BioLockJ/templates/exampleProject/example.config, 
 #' where "BioLockJ" is the path passed in as _bljDir_.
 #'
-#' @param bljDir 
+#' @param bljDir the BioLockJ directory, typically two levels up from BioLockJ.jar
 #'
 #' @return
 #'

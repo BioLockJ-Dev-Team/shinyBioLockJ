@@ -45,9 +45,13 @@ buildFilePathPropUI(propName)
 
 \item{values}{the list of lists reactive values object that represents the current configuration}
 
+\item{fileListUpdates}{a reactive values object that keeps the file list options per property}
+
 \item{value}{in the case of a list property, the value of the property, most likely a single string, possibly comma-separated list}
 }
 \value{
+
+
 ui object
 }
 \description{

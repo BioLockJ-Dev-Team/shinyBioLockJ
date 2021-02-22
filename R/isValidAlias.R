@@ -10,13 +10,13 @@
 #' @details 
 #' If false, a message is printed to stderr with explaination.
 #'
-#' @examples
-#' isValidAlias("foo")
-#' #> FALSE
-#' isValidAlias("Foo")
-#' #> TRUE
-#' isValidAlias("Foo", c("Foo", "Bar", "Baz"))
-#' #' #> FALSE
+# @examples
+# isValidAlias("foo")
+# #> FALSE
+# isValidAlias("Foo")
+# #> TRUE
+# isValidAlias("Foo", c("Foo", "Bar", "Baz"))
+# #' #> FALSE
 isValidAlias <- function(alias, existingAlia=c() ){
     firstChar = substr(alias,1,1)
     if ( ! firstChar %in% LETTERS ) {

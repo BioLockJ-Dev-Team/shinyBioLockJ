@@ -6,7 +6,7 @@
 #' @param type the type of property to keep
 #'
 #' @return a named list of property objects, a subset of propInfo.
-#'
+#' 
 propsInfoForType <- function(propInfo, type){
     keepIf = sapply(propInfo, function(prop){prop$type == type})
     return(propInfo[keepIf])

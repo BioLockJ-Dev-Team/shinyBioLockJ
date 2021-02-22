@@ -3,15 +3,14 @@
 #' As of this writing, the Properties class in BioLockJ has these KNOWN_TYPES:
 #' KNOWN_TYPES = {STRING_TYPE, BOOLEAN_TYPE, FILE_PATH, EXE_PATH, LIST_TYPE, FILE_PATH_LIST, INTEGER_TYPE, NUMERTIC_TYPE};
 #' KNOWN_TYPES = {"string", "boolean", "file path", "executable", "list", "list of file paths", "integer", "numeric"};
-#' 
+#'  
 #' @param propName a property name, such script.numThreads
 #' @param prop a property object, which is a list that contains type, description, etc
 #' @param default the current default value
 #' @param value the current value
 #' @param defaults the list of lists of representation of defaults
 #'
-#' @return
-#'
+#' @return ui object list
 #' 
 # render general prop ui ####
 renderPropUi <- function(propName, prop, default, value, defaults){

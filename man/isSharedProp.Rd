@@ -18,7 +18,7 @@ isSharedProp(
 \item{includeMods}{the modules in the current pipeline}
 }
 \value{
-
+boolean
 }
 \description{
 Determines if the given property is used by more than one of the modules in the pipeline.

@@ -1,6 +1,6 @@
 #' 
 #' @describeIn buildFilePathPropUI Build the UI for a BioLockJ file list property
-#'
+#' 
 #' @param propName a string, the name of the property
 #' @param value in the case of a list property, the value of the property, most likely a single string, possibly comma-separated list
 #'
