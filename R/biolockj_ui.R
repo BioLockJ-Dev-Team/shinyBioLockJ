@@ -5,6 +5,7 @@
 biolockj_ui <- function(){
     
     envType = detect_deployment()
+    helpMdFile = system.file("md", "HelpPage.md", package = "shinyBioLockJ")
     
     ui <-  fluidPage( 
         shinyFeedback::useShinyFeedback(),
@@ -177,7 +178,7 @@ biolockj_ui <- function(){
             # Help ####
             tabPanel("Help",
                      p("navbar"),p("spacer"),
-                     includeMarkdown("HelpPage.md"))
+                     includeMarkdown(helpMdFile))
         )
     ) # end of UI ####
     return(ui)
