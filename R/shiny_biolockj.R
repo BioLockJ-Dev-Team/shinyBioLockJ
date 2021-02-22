@@ -18,18 +18,6 @@ shiny_biolockj <- function(...) {
     # Hopefully refactored in a few function calls
     
     #############################          Libraries          #########################################
-    # library(shiny)
-    # library(shinyjs)
-    # # install.packages("shinythemes")
-    # library(shinythemes)
-    # # install.packages("shinyBS")
-    # library(shinyBS)
-    # # install.packages("sortable")
-    # library(sortable)
-    # # install.packages('shinyFiles')
-    # library(shinyFiles)
-    # library(shinyFeedback)
-    # 
     # # install_github("IvoryC/BioLockR")
     # library("BioLockR")
     # if (numeric_version( packageVersion("BioLockR") ) < numeric_version("0.0.0.9001") ){
