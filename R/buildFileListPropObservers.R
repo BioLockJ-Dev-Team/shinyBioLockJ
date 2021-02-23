@@ -17,20 +17,20 @@ buildFileListPropObservers <- function(session, input, output, propName, myVolum
     observeEvent( input[[propFileChooserId(propName)]], {
         if (! is.integer(input[[propFileChooserId(propName)]])){
             newPath = shinyFiles::parseFilePaths(myVolumesNow, input[[propFileChooserId(propName)]])$datapath
-            choices = filePathChoices( values$pipelineProperties[[propName]], newPath)
+            choices = filePathChoices( values$pipelineProperties[propName], newPath)
             updateSelectInput(session, propSelectFromId(propName), choices = choices, selected = choices)
         }
     })
     observeEvent( input[[propDirChooserId(propName)]], {
         if (! is.integer(input[[propDirChooserId(propName)]])){
             newPath = shinyFiles::parseDirPath(myVolumesNow, input[[propDirChooserId(propName)]])
-            choices = filePathChoices( values$pipelineProperties[[propName]], newPath)
+            choices = filePathChoices( values$pipelineProperties[propName], newPath)
             updateSelectInput(session, propSelectFromId(propName), choices = choices, selected = choices)
         }
     })
     
     observeEvent(input[[propSelectFromId(propName)]], {
-        values$pipelineProperties[[propName]] = BioLockR::printListProp( input[[propSelectFromId(propName)]] )
+        values$pipelineProperties[propName] = BioLockR::printListProp( input[[propSelectFromId(propName)]] )
     })
     observeEvent(fileListUpdates[[propName]], {
         choices = filePathChoices(fileListUpdates[[propName]] )

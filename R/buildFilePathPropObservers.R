@@ -12,17 +12,17 @@ buildFilePathPropObservers <- function(session, input, output, propName, myVolum
     shinyFiles::shinyDirChoose(input, propDirChooserId(propName), roots = myVolumesNow, session = session, restrictions = system.file(package = "base"))
     #
     observeEvent(input[[propClearBtn(propName)]], {
-        values$pipelineProperties[[propName]] = ""
+        values$pipelineProperties[propName] = ""
     })
     observeEvent( input[[propFileChooserId(propName)]], {
         if (! is.integer(input[[propFileChooserId(propName)]])){
-            values$pipelineProperties[[propName]] = shinyFiles::parseFilePaths(myVolumesNow, input[[propFileChooserId(propName)]])$datapath
+            values$pipelineProperties[propName] = shinyFiles::parseFilePaths(myVolumesNow, input[[propFileChooserId(propName)]])$datapath
         }
     })
     observeEvent( input[[propDirChooserId(propName)]], {
         if (! is.integer(input[[propDirChooserId(propName)]])){
-            values$pipelineProperties[[propName]] = shinyFiles::parseDirPath(myVolumesNow, input[[propDirChooserId(propName)]])
+            values$pipelineProperties[propName] = shinyFiles::parseDirPath(myVolumesNow, input[[propDirChooserId(propName)]])
         }
     })
-    output[[propShowId(propName)]] <- renderText( values$pipelineProperties[[propName]] )
+    output[[propShowId(propName)]] <- renderText( values$pipelineProperties[propName] )
 }
