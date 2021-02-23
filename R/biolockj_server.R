@@ -863,7 +863,7 @@ biolockj_server <- function(input, output, session){
             if ( isWritableValue(values$pipelineProperties) ){#TODO something better
                 for(p in names(values$pipelineProperties)){
                     value = values$pipelineProperties[p]
-                    if ( doIncludeProp(p, value) ){
+                    if ( doIncludeProp(p, value, default=defaults$values[p], input=input) ){
                         line = writeConfigProp(p, value, genPropInfo()[[p]]$type, projectDirPath(), input$checkRelPaths)
                         lines = c(lines, line)
                     }
@@ -888,16 +888,6 @@ biolockj_server <- function(input, output, session){
             }
             lines
         })
-        
-        doIncludeProp <- function(p, value){
-            if (isWritableValue(value)){
-                notTheDefault = !is.null(defaults$values[p]) && value != defaults$values[p]
-                # message("value of property ", p, "=", value, " is ", ifelse(notTheDefault, "NOT", ""), " the same as the default value: ", defaults$values[p])
-                return(is.null(defaults$values[p]) || notTheDefault || input$include_standard_defaults)
-            }else{
-                return(FALSE)
-            }
-        }
         
         save_modify_restore <- reactive({
             # save state
