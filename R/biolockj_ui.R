@@ -10,7 +10,7 @@ biolockj_ui <- function(){
     ui <-  fluidPage( 
         shinyFeedback::useShinyFeedback(),
         shinyjs::useShinyjs(),
-        navbarPage(
+        navbarPage(id = "topTabs",
             position = "fixed-top",
             theme = shinythemes::shinytheme("cerulean"),
             "BioLockJ",

@@ -7,8 +7,12 @@
 #' @return category portion fo the property
 #' 
 groupPropsByCategory <- function(propInfo) { 
-    props = names(propInfo)
-    splits = strsplit(props, split = ".", fixed = TRUE)
-    category = sapply(splits, function(s){s[1]})
-    return(split(props, f=category))
+    if (isWritableValue(propInfo)){
+        props = names(propInfo)
+        splits = strsplit(props, split = ".", fixed = TRUE)
+        category = sapply(splits, function(s){s[1]})
+        return(split(props, f=category))
+    }else{
+        return(c())
+    }
 }

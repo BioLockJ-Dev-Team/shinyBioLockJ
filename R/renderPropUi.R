@@ -13,12 +13,13 @@
 #' @return ui object list
 #' 
 # render general prop ui ####
-renderPropUi <- function(propName, prop, default, value, defaults){
+renderPropUi <- function(propName, prop, value, defaults){
     # message("Treating property ", propName, " as a ", prop$type, " property.")
     uiName = propUiName(propName)
+    default = defaults$values[propName]
     if(prop$type == "boolean"){
         selected = ""
-        if ( !is.null(value) ){
+        if ( isWritableValue(value) ){
             if ( value=="Y" || value=="TRUE" || value==TRUE ) {
                 selected = "Y"
             }else if(value=="N" || value=="FALSE" || value==FALSE ){
@@ -61,7 +62,7 @@ renderPropUi <- function(propName, prop, default, value, defaults){
             hr())
     }else{
         content = "<b>source of default value</b>"
-        content = c(content, paste("standard default:", defaults$defaultPropsList$standard[[propName]]))
+        content = c(content, paste("standard default:", defaults$defaultPropsList$standard[propName]))
         for (name in defaults$activeFiles){
             val = " "
             if (propName %in% names(defaults$defaultPropsList[[name]])){
@@ -73,7 +74,7 @@ renderPropUi <- function(propName, prop, default, value, defaults){
         propUI <- tagList(
             shinyBS::popify(
                 actionLink(propInfoId(propName), "", icon = icon("angle-double-left")),
-                title=paste0("<b>", propName, " = ",  defaults$values[[propName]], "</b>"),
+                title=paste0("<b>", propName, " = ",  defaults$values[propName], "</b>"),
                 paste0(content, collapse = "<br>"),#content=paste("default:", defaults$values[[propName]]),
                 trigger = c('hover','click'), placement='right'),
             em(prop$type),

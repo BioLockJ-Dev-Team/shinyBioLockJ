@@ -27,14 +27,34 @@ biolockj_server <- function(input, output, session){
         BioLockR::set_BLJ_PROJ(file.path(getwd(), "temp"), remember=TRUE, doublecheck = FALSE)
     })
     
-    initbljVer = BioLockR::biolockjVersion()
-    initpropInfo <- propInfoSansSpecials()
-    initmoduleInfo <- BioLockR::moduleInfo()
-    initGenDefaults <- lapply(initpropInfo, function(prop){ prop$default })
-    initFilePathType <- propsInfoForType(initpropInfo, "file path")
-    initFileListType <- propsInfoForType(initpropInfo, "list of file paths")
+    initbljVer =  tryCatch({
+        BioLockR::biolockjVersion()
+    }, error=function(...){""})
+   
+    initpropInfo <- tryCatch({
+        propInfoSansSpecials()
+    }, error=function(...){""})
+    
+    initmoduleInfo <- tryCatch({
+        BioLockR::moduleInfo()
+    }, error=function(...){""})
+    
+    initGenDefaults <- tryCatch({
+        unlist( sapply(initpropInfo, function(prop){ prop$default }) )
+    }, error=function(...){""})
+    
+    initFilePathType <- tryCatch({
+        propsInfoForType(initpropInfo, "file path")
+    }, error=function(...){""})
+    
+    initFileListType <- tryCatch({
+        propsInfoForType(initpropInfo, "list of file paths")
+    }, error=function(...){""})
     
     volumes <- c(Home = fs::path_home(), shinyFiles::getVolumes()())
+    
+    #TODO: remove this
+    volumes = c(volumes, DEVONLY="/Users/ieclabau/git/shinyBioLockJ/BioLockJ/dist")
     
     #############################            SERVER            #########################################
     
@@ -56,16 +76,27 @@ biolockj_server <- function(input, output, session){
         )
         
         defaults <- reactiveValues(
-            defaultPropsChain = list(),
-            defaultPropsList = list(standard=initGenDefaults),
+            # named character vector, names are property names
             values = initGenDefaults,
+            # cummulative data frame of uploaded default props files
             uploadedFiles = data.frame(name=c(), size=c(), type=c(), datapath=c()),
+            # named list; names are file basenames.
+            # Each named element is a named vector of property names and values
+            defaultPropsList = list(standard=initGenDefaults),
+            # named list where names are the basename of an uploaded defaultProps file
+            # and each element is a charactor vector giving the file path of any/all defaultProps 
+            # files referenced by that file.
+            defaultPropsChain = list(),
+            # vector of defaultProps file names in the order in which they are loaded as defaults;
+            # values correspond to names of defaults$defaultPropsList
             activeFiles = c()
         )
         
         projectDirPath <- reactiveVal("")
         
-        jarFilePath <- reactiveVal( BioLockR::get_BLJ_JAR() )
+        jarFilePath <- reactiveVal( tryCatch({
+            BioLockR::get_BLJ_JAR()
+        }, error=function(...){""}) )
         
         extModsDir <- reactiveVal( "" )
         
@@ -78,12 +109,13 @@ biolockj_server <- function(input, output, session){
         
         genPropInfo <- reactiveVal(initpropInfo)
         
-        # break out properties into categories
-        groupedProps <- reactiveVal( groupPropsByCategory(initpropInfo) )
+        
         
         # TODO: make this update if jar file is updated
         filePathProps <- reactiveVal( initFilePathType )
         fileListProps <- reactiveVal( initFileListType )
+        # break out properties into categories
+        groupedProps <- reactiveVal( groupPropsByCategory(initpropInfo) )
         
         # 
         fileListUpdates <- reactiveValues()
@@ -190,17 +222,19 @@ biolockj_server <- function(input, output, session){
         output$genProps <- renderUI({
             message("Rendering ui for slot genProps...")
             argsList =  lapply(as.list(names(groupedProps())), function(groupName){
+                message("Building property group: ", groupName)
                 group = groupedProps()[[groupName]]
                 tabPanel(groupName,
                          p(paste("See the user guide for more info about", groupName, "properties.", collaps=" ")),
                          lapply(group, function(propName){
+                             message("genPropInfo - ", genPropInfo()[[propName]])
+                             message("values$pipelineProperties - ", isolate(values$pipelineProperties[propName]))
                              propUI <- renderPropUi(propName, 
                                                     genPropInfo()[[propName]], 
-                                                    defaults$values[[propName]], 
-                                                    isolate(values$pipelineProperties[[propName]]),
+                                                    isolate(values$pipelineProperties[propName]),
                                                     isolate(defaults))
                              observeEvent(input[[propUiName(propName)]],{
-                                 values$pipelineProperties[[propName]] <- input[[propUiName(propName)]]
+                                 values$pipelineProperties[propName] <- input[[propUiName(propName)]]
                                  req(input$checkLiveFeedback)
                                  req(genPropInfo()[[propName]]$type != "boolean")
                                  shinyFeedback::hideFeedback( propUiName(propName) )
@@ -509,26 +543,15 @@ biolockj_server <- function(input, output, session){
                 # save state
                 prevCheckBox = input$include_standard_defaults
                 updateCheckboxInput(session, "include_standard_defaults", value=FALSE)
-                tempFile = tempfile()
-                writeLines(configLines(), tempFile)
-                # modify underlying state
-                defaults$values = c()
-                defaults$values = lapply(genPropInfo(), function(prop){ prop$default })
                 defaults$activeFiles = chainInfo$chained
-                for (file in defaults$activeFiles){
-                    newProps = defaults$defaultPropsList[[file]]
-                    defaults$values[names(newProps)] = newProps
-                }
-                values$pipelineProperties = defaults$values[names(values$pipelineProperties)]
+                save_modify_restore()
                 # restore state
-                existingLines( readLines( tempFile ) )
-                populateProps()
                 values$defaultProps = input$selectDefaultProps
                 updateCheckboxInput(session, "include_standard_defaults", value=prevCheckBox)
                 shinyFeedback::hideFeedback("selectDefaultProps")
             }
         })
-        
+
         # Module ####
         observeEvent(input$AddModuleButton, {
             runLine = makeRunLine(input$AddBioModule, moduleRunLines(), input$newAlias)
@@ -648,12 +671,45 @@ biolockj_server <- function(input, output, session){
         respondToUpdateJar <- reactive({
             # TODO: show spinner or progress bar or something to let the user know that a delay is expected.
             # update objects from java
-            jarFilePath( BioLockR::get_BLJ_JAR() )
-            bljVer(BioLockR::biolockjVersion())
-            allModuleInfo(BioLockR::moduleInfo()) 
-            moduleRunLines(getModuleRunLines(allModuleInfo()))
-            genPropInfo(propInfoSansSpecials())
+            jarFilePath( tryCatch({
+                BioLockR::get_BLJ_JAR()
+            }, error=function(...){""}) )
+            
+            bljVer( tryCatch({
+                BioLockR::biolockjVersion()
+            }, error=function(...){""}) )
+            
+            allModuleInfo( tryCatch({
+                BioLockR::moduleInfo()
+            }, error=function(...){""}) )
+            
+            #TODO: maybe use event reactive
+            moduleRunLines( tryCatch({
+                getModuleRunLines(allModuleInfo())
+            }, error=function(...){""}) )
+            
+            message("2")
+            message(str(values$pipelineProperties))
+            
+            genPropInfo( tryCatch({
+                propInfoSansSpecials()
+            }, error=function(...){""}) )
+            
+            # derivatives of genPropInfo #TODO: maybe use event reactive
+            filePathProps( propsInfoForType(genPropInfo(), "file path") )
+            fileListProps( propsInfoForType(genPropInfo(), "list of file paths") )
+            groupedProps( groupPropsByCategory(genPropInfo()) )
+            defaults$defaultPropsList[["standard"]] = namedDefaultVals( genPropInfo() )
             #TODO: update modules properties
+            
+            message("5")
+            message(str(values$pipelineProperties))
+            
+            save_modify_restore()
+            
+            message("6")
+            message(str(values$pipelineProperties))
+            
         })
         
         # Settings - ext mods dir ####
@@ -720,6 +776,18 @@ biolockj_server <- function(input, output, session){
         #############################           Actions            #########################################
         # reactive expressions that are intuitively like functions
         
+        observeEvent(list(input$updateJar,
+                          bljVer() ), {
+                              if ( bljVer()=="" ){
+                                  showNotification(ui=tagList(strong("Cannot access BioLockJ!"), 
+                                                               p("Correct the setting for BLJ_JAR.")),
+                                                   type = "error", duration=0, id="badJarNoteId")
+                                  updateTabsetPanel(session=session, inputId="topTabs", selected = "Settings")
+                              }else{
+                                  removeNotification(id="badJarNoteId") 
+                              }
+                          })
+        
         existingLines <- reactiveVal()
         
         configFileName <- reactive( paste0(input$projectName, ".config") )
@@ -739,15 +807,20 @@ biolockj_server <- function(input, output, session){
         })
         
         populateProps <- reactive({
+            message("Populating properties...")
+            ppCounter=0
             newProps = BioLockR::extract_defautlProps(BioLockR::read_properties( existingLines() ))
             values$defaultProps = newProps$defaultProps
             vals = newProps$properties
+            message("...working with up to ", length(vals), " properties...")
             if (length(vals) > 0 ){
                 for( propName in names(vals) ){
                     message("updating property value: ", propName, " = ", vals[propName])
-                    # If propName is a genProp, set genProp
-                    if ( propName %in% names(genPropInfo()) ){
-                        # if input object is established, set through that
+                    if ( !isWritableValue(vals[propName])){
+                        message("Ignoring empty property.")
+                    }else if ( propName %in% names(genPropInfo()) ){
+                        ppCounter = ppCounter + 1
+                        # If an input object is established, set through that
                         # otherwise, set value in pipelineProperties object Directly
                         if( !is.null(input[[propSelectFromId(propName)]]) ){
                             # if rendered, file path list props go this way
@@ -758,13 +831,14 @@ biolockj_server <- function(input, output, session){
                         }else{ 
                             # file path props got this way, rendered or not
                             # all props, if NOT rendered, go this way
-                            values$pipelineProperties[[propName]] <- vals[propName]
+                            values$pipelineProperties[propName] <- vals[propName]
                         }
                     }else{
                         values$customProps[[propName]] <- vals[propName]
                     }
                 }
             }
+            message("...done populating ", ppCounter, " properties.")
         })
         
         configLines <- reactive({
@@ -786,11 +860,13 @@ biolockj_server <- function(input, output, session){
                 }
             }
             lines = c(lines, "", "# General Properties")
-            for(p in names(genPropInfo())){
-                value = values$pipelineProperties[[p]]
-                if ( doIncludeProp(p, value) ){
-                    line = writeConfigProp(p, value, genPropInfo()[[p]]$type, projectDirPath(), input$checkRelPaths)
-                    lines = c(lines, line)
+            if ( isWritableValue(values$pipelineProperties) ){#TODO something better
+                for(p in names(values$pipelineProperties)){
+                    value = values$pipelineProperties[p]
+                    if ( doIncludeProp(p, value) ){
+                        line = writeConfigProp(p, value, genPropInfo()[[p]]$type, projectDirPath(), input$checkRelPaths)
+                        lines = c(lines, line)
+                    }
                 }
             }
             for (runline in values$moduleList){
@@ -815,13 +891,38 @@ biolockj_server <- function(input, output, session){
         
         doIncludeProp <- function(p, value){
             if (isWritableValue(value)){
-                notTheDefault = !is.null(defaults$values[[p]]) && value != defaults$values[[p]]
-                # message("value of property ", p, "=", value, " is ", ifelse(notTheDefault, "NOT", ""), " the same as the default value: ", defaults$values[[p]])
-                return(is.null(defaults$values[[p]]) || notTheDefault || input$include_standard_defaults)
+                notTheDefault = !is.null(defaults$values[p]) && value != defaults$values[p]
+                # message("value of property ", p, "=", value, " is ", ifelse(notTheDefault, "NOT", ""), " the same as the default value: ", defaults$values[p])
+                return(is.null(defaults$values[p]) || notTheDefault || input$include_standard_defaults)
             }else{
                 return(FALSE)
             }
         }
+        
+        save_modify_restore <- reactive({
+            # save state
+            tempFile = tempfile()
+            message("Saving to temp file: ", tempFile) #TODO: remove
+            writeLines(configLines(), tempFile)
+            # modify underlying state
+            defaults$values = vector("character")
+            values$pipelineProperties = vector("character")
+            defaults$values = defaults$defaultPropsList[["standard"]]
+            for (file in defaults$activeFiles){
+                newProps = defaults$defaultPropsList[[file]]
+                defaults$values[names(newProps)] = newProps
+            }
+            values$pipelineProperties = defaults$values
+            # restore state
+            existingLines( readLines( tempFile ) )
+            message("Sending saved lines to populate promps, number of lines: ", length(existingLines() )) #TODO: remove
+            
+            message("5.2: ", str(values$pipelineProperties))
+            
+            populateProps()
+            
+            message("5.3: ", str(values$pipelineProperties))
+        })
         
         # Precheck
         precheckCommand <- reactive({

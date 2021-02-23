@@ -8,7 +8,11 @@
 #' @return named vector
 #'
 getModuleRunLines <- function(moduleInfo){
-    moduleRunLines = sapply(moduleInfo, function(mi){mi$usage})
-    names(moduleRunLines) <- names(moduleInfo)
-    return(moduleRunLines)
+    if (isWritableValue(moduleInfo)){
+        moduleRunLines = sapply(moduleInfo, function(mi){mi$usage})
+        names(moduleRunLines) <- names(moduleInfo)
+        return(moduleRunLines)
+    }else{
+        return(c())
+    }
 }
