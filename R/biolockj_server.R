@@ -221,41 +221,48 @@ biolockj_server <- function(input, output, session){
         # Properties - backbone ####
         output$genProps <- renderUI({
             message("Rendering ui for slot genProps...")
-            argsList =  lapply(as.list(names(groupedProps())), function(groupName){
-                message("Building property group: ", groupName)
-                group = groupedProps()[[groupName]]
-                tabPanel(groupName,
-                         p(paste("See the user guide for more info about", groupName, "properties.", collaps=" ")),
-                         lapply(group, function(propName){
-                             message("genPropInfo - ", genPropInfo()[[propName]])
-                             message("values$pipelineProperties - ", isolate(values$pipelineProperties[propName]))
-                             propUI <- renderPropUi(propName, 
-                                                    genPropInfo()[[propName]], 
-                                                    isolate(values$pipelineProperties[propName]),
-                                                    isolate(defaults))
-                             observeEvent(input[[propUiName(propName)]],{
-                                 values$pipelineProperties[propName] <- input[[propUiName(propName)]]
-                                 req(input$checkLiveFeedback)
-                                 req(genPropInfo()[[propName]]$type != "boolean")
-                                 shinyFeedback::hideFeedback( propUiName(propName) )
-                                 req(input[[propUiName(propName)]] != "")
-                                 isGood = isolate(BioLockR::isValidProp(propName, input[[propUiName(propName)]]))
-                                 message("isGood: ", isGood)
-                                 if (is.na(isGood)){
+            totalSteps = length( groupedProps() ) + 2
+            withProgress({
+                argsList =  lapply(as.list(names(groupedProps())), function(groupName){
+                    message("Building property group: ", groupName)
+                    incProgress(1 / totalSteps)
+                    group = groupedProps()[[groupName]]
+                    tabPanel(groupName,
+                             p(paste("See the user guide for more info about", groupName, "properties.", collaps=" ")),
+                             lapply(group, function(propName){
+                                 message("genPropInfo - ", genPropInfo()[[propName]])
+                                 message("values$pipelineProperties - ", isolate(values$pipelineProperties[propName]))
+                                 propUI <- renderPropUi(propName, 
+                                                        genPropInfo()[[propName]], 
+                                                        isolate(values$pipelineProperties[propName]),
+                                                        isolate(defaults))
+                                 observeEvent(input[[propUiName(propName)]],{
+                                     values$pipelineProperties[propName] <- input[[propUiName(propName)]]
+                                     req(input$checkLiveFeedback)
+                                     req(genPropInfo()[[propName]]$type != "boolean")
                                      shinyFeedback::hideFeedback( propUiName(propName) )
-                                 }else if(isGood){
-                                     shinyFeedback::showFeedbackSuccess( propUiName(propName) )
-                                 }else{
-                                     shinyFeedback::showFeedbackWarning( propUiName(propName), "not good" )
-                                 }
-                             })
-                             propUI
-                         }))
-            })
-            refreshFileChoosers()
-            argsList$selected = "input"
-            argsList$id = "genPropsTabSet"
-            do.call(tabsetPanel, argsList)
+                                     req(input[[propUiName(propName)]] != "")
+                                     isGood = isolate(BioLockR::isValidProp(propName, input[[propUiName(propName)]]))
+                                     message("isGood: ", isGood)
+                                     if (is.na(isGood)){
+                                         shinyFeedback::hideFeedback( propUiName(propName) )
+                                     }else if(isGood){
+                                         shinyFeedback::showFeedbackSuccess( propUiName(propName) )
+                                     }else{
+                                         shinyFeedback::showFeedbackWarning( propUiName(propName), "not good" )
+                                     }
+                                 })
+                                 propUI
+                             }))
+                })
+                incProgress(1 / totalSteps)
+                refreshFileChoosers()
+                argsList$selected = "input"
+                argsList$id = "genPropsTabSet"
+                incProgress(1 / totalSteps)
+                result = do.call(tabsetPanel, argsList)
+            }, message = "Rendering general properties...")
+            result
         })
         
         # myVolumes = reactiveVal(volumes)
