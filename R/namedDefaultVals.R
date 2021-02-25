@@ -10,7 +10,7 @@
 #' @return a named character vector where the names are the property names and the values are the property values
 #'
 namedDefaultVals <- function(propInfo){
-    if (isWritableValue(propInfo)){
+    if (BioLockR::hasReadableValue(propInfo)){
         return( unlist( sapply(propInfo, function(prop){ prop$default }) ) )
     }else{
         vector("character")

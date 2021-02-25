@@ -6,7 +6,7 @@
 #' @return the new set of choices, essentially c(existing, newPath)
 #'
 filePathChoices = function(existing, newPath=NULL){
-    if ( isWritableValue( existing ) ){
+    if ( BioLockR::isReadableValue( existing ) ){
         oldSet = BioLockR::parseListProp( existing )
     }else{
         oldSet = c()

@@ -19,7 +19,7 @@ renderPropUi <- function(propName, prop, value, defaults){
     default = defaults$values[propName]
     if(prop$type == "boolean"){
         selected = ""
-        if ( isWritableValue(value) ){
+        if ( BioLockR::isReadableValue(value) ){
             if ( value=="Y" || value=="TRUE" || value==TRUE ) {
                 selected = "Y"
             }else if(value=="N" || value=="FALSE" || value==FALSE ){

@@ -592,7 +592,7 @@ biolockj_server <- function(input, output, session){
             message(precheckCommand())
             
             if ( length(values$moduleList) == 0 ) validate("You need to include at least one module")
-            if ( isWritableValue(projectDirPath()) && input$radioServerType =="local" ){
+            if ( BioLockR::isReadableValue(projectDirPath()) && input$radioServerType =="local" ){
                 message("Running locally with a configured project root dir; using project root dir")
                 tempFileLoc = tempfile(pattern = input$projectName, tmpdir = projectDirPath(), fileext = ".config")
             }else{
@@ -823,7 +823,7 @@ biolockj_server <- function(input, output, session){
             if (length(vals) > 0 ){
                 for( propName in names(vals) ){
                     message("updating property value: ", propName, " = ", vals[propName])
-                    if ( !isWritableValue(vals[propName])){
+                    if ( !BioLockR::hasReadableValue(vals[propName])){
                         message("Ignoring empty property.")
                     }else if ( propName %in% names(genPropInfo()) ){
                         ppCounter = ppCounter + 1
@@ -867,7 +867,7 @@ biolockj_server <- function(input, output, session){
                 }
             }
             lines = c(lines, "", "# General Properties")
-            if ( isWritableValue(values$pipelineProperties) ){#TODO something better
+            if ( BioLockR::hasReadableValue(values$pipelineProperties) ){#TODO something better
                 for(p in names(values$pipelineProperties)){
                     value = values$pipelineProperties[p]
                     if ( doIncludeProp(p, value, default=defaults$values[p], input=input) ){

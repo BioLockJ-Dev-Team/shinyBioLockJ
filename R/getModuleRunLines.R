@@ -8,7 +8,7 @@
 #' @return named vector
 #'
 getModuleRunLines <- function(moduleInfo){
-    if (isWritableValue(moduleInfo)){
+    if (BioLockR::hasReadableValue(moduleInfo)){
         moduleRunLines = sapply(moduleInfo, function(mi){mi$usage})
         names(moduleRunLines) <- names(moduleInfo)
         return(moduleRunLines)

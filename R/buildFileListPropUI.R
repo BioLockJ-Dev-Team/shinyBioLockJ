@@ -5,7 +5,7 @@
 #' @param value in the case of a list property, the value of the property, most likely a single string, possibly comma-separated list
 #'
 buildFileListPropUI <- function(propName, value){
-    if (isWritableValue(value)){
+    if (BioLockR::hasReadableValue(value)){
         choices = BioLockR::parseListProp(value)
         names(choices) = basename(choices)
     }else{

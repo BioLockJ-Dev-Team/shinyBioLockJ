@@ -7,7 +7,7 @@
 #' @return category portion fo the property
 #' 
 groupPropsByCategory <- function(propInfo) { 
-    if (isWritableValue(propInfo)){
+    if (BioLockR::hasReadableValue(propInfo)){
         props = names(propInfo)
         splits = strsplit(props, split = ".", fixed = TRUE)
         category = sapply(splits, function(s){s[1]})
