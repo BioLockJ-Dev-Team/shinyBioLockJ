@@ -46,7 +46,7 @@ biolockj_ui <- function(){
                                           em("(optional)"),
                                           p(em("When you pull values from an existing file, the values from the file will replace anything configured here.")),
                                           fileInput("uploadExistingConfig", label="Upload an existing config file", accept = c(".properties", ".config")),
-                                          shinyjs::disabled(actionButton("populateExistingConfig", "pull values")),
+                                          shinyjs::disabled(actionButton("populateUploadedConfig", "pull values")),
                                           hr(),
                                           tabsetPanel(
                                               id = "localExistingConfig",

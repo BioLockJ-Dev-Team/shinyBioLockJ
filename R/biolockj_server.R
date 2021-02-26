@@ -478,8 +478,8 @@ biolockj_server <- function(input, output, session){
             updateTabsetPanel(session, "HomeTabs", selected="Save to file")
         })
         
-        observeEvent(input$populateExistingConfig, {
-            message("The button got pushed: populateExistingConfig")
+        observeEvent(input$populateUploadedConfig, {
+            message("The button got pushed: populateUploadedConfig")
             req( input$uploadExistingConfig )
             existingLines( readLines( input$uploadExistingConfig$datapath ) )
             projectDirPath( "" )
@@ -1058,9 +1058,9 @@ biolockj_server <- function(input, output, session){
         
         observeEvent(input$uploadExistingConfig, {
             if (file.exists(input$uploadExistingConfig$datapath)){
-                shinyjs::enable("populateExistingConfig")
+                shinyjs::enable("populateUploadedConfig")
             }else{
-                shinyjs::disable("populateExistingConfig")
+                shinyjs::disable("populateUploadedConfig")
             }
         })
         
