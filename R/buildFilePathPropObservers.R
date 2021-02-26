@@ -11,18 +11,22 @@ buildFilePathPropObservers <- function(session, input, output, propName, myVolum
     shinyFiles::shinyFileChoose(input, propFileChooserId(propName), roots = myVolumesNow, session = session)
     shinyFiles::shinyDirChoose(input, propDirChooserId(propName), roots = myVolumesNow, session = session, restrictions = system.file(package = "base"))
     #
-    observeEvent(input[[propClearBtn(propName)]], {
-        values$pipelineProperties[propName] = ""
-    })
     observeEvent( input[[propFileChooserId(propName)]], {
         if (! is.integer(input[[propFileChooserId(propName)]])){
-            values$pipelineProperties[propName] = shinyFiles::parseFilePaths(myVolumesNow, input[[propFileChooserId(propName)]])$datapath
+            path = shinyFiles::parseFilePaths(myVolumesNow, input[[propFileChooserId(propName)]])$datapath
+            message("path: ", path)
+            updateTextInput(session=session, propUiName(propName), value=as.character(path) )
         }
     })
+
     observeEvent( input[[propDirChooserId(propName)]], {
         if (! is.integer(input[[propDirChooserId(propName)]])){
-            values$pipelineProperties[propName] = shinyFiles::parseDirPath(myVolumesNow, input[[propDirChooserId(propName)]])
+            updateTextInput(session=session, propUiName(propName), 
+                            value=shinyFiles::parseDirPath(myVolumesNow, input[[propDirChooserId(propName)]]) )
         }
     })
-    output[[propShowId(propName)]] <- renderText( values$pipelineProperties[propName] )
+
+    observeEvent(input[[propUiName(propName)]], {
+        values$pipelineProperties[propName] = input[[propUiName(propName)]]
+    })
 }

@@ -6,12 +6,10 @@
 #'
 #' @return ui object
 #'
-buildFilePathPropUI <- function(propName){
+buildFilePathPropUI <- function(propName, value, default){
     tagList(
-        p(strong(propName)),
-        verbatimTextOutput(propShowId(propName), placeholder = TRUE),
+        textInput(propUiName(propName), propName, value=value, placeholder = default),
         shinyFiles::shinyFilesButton(id=propFileChooserId(propName), "set file", title = "select a file", multiple = FALSE),
         shinyFiles::shinyDirButton(id=propDirChooserId(propName), "set directory", title = "select a directory"),
-        actionButton(propClearBtn(propName), label = "clear")
     )
 }

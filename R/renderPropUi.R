@@ -43,7 +43,7 @@ renderPropUi <- function(propName, prop, value, defaults){
                                  step = 1,
                                  width = '40%')
     }else if(prop$type == "file path"){
-        inputObj <- buildFilePathPropUI(propName)
+        inputObj <- buildFilePathPropUI(propName, value, default)
     }else if(prop$type == "list of file paths"){
         inputObj <- buildFileListPropUI(propName, value)
     }else {
