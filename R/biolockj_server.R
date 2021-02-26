@@ -43,14 +43,6 @@ biolockj_server <- function(input, output, session){
         unlist( sapply(initpropInfo, function(prop){ prop$default }) )
     }, error=function(...){""})
     
-    initFilePathType <- tryCatch({
-        propsInfoForType(initpropInfo, "file path")
-    }, error=function(...){""})
-    
-    initFileListType <- tryCatch({
-        propsInfoForType(initpropInfo, "list of file paths")
-    }, error=function(...){""})
-    
     volumes <- c(Home = fs::path_home(), shinyFiles::getVolumes()())
     
     #############################            SERVER            #########################################
@@ -105,18 +97,26 @@ biolockj_server <- function(input, output, session){
         
         allModuleInfo <- reactiveVal(initmoduleInfo)
         
-        # map module short name to run line syntax
-        moduleRunLines <- reactiveVal(getModuleRunLines(initmoduleInfo))
+        moduleRunLines <- eventReactive(allModuleInfo(), {
+            # map module short name to run line syntax
+            getModuleRunLines(allModuleInfo())
+        })
+
         
         genPropInfo <- reactiveVal(initpropInfo)
         
+        filePathProps <- eventReactive(genPropInfo(), {
+            propsInfoForType(genPropInfo(), "file path")
+            })
+
+        fileListProps <- eventReactive( genPropInfo(), {
+            propsInfoForType(genPropInfo(), "list of file paths")
+        })
         
-        
-        # TODO: make this update if jar file is updated
-        filePathProps <- reactiveVal( initFilePathType )
-        fileListProps <- reactiveVal( initFileListType )
-        # break out properties into categories
-        groupedProps <- reactiveVal( groupPropsByCategory(initpropInfo) )
+        groupedProps <- eventReactive(genPropInfo(), {
+            # break out properties into categories
+            groupPropsByCategory( genPropInfo() )
+        })
         
         
         #############################         Dynamic UI           #########################################
@@ -706,6 +706,7 @@ biolockj_server <- function(input, output, session){
         
         respondToUpdateJar <- reactive({
             # TODO: show spinner or progress bar or something to let the user know that a delay is expected.
+            
             # update objects from java
             jarFilePath( tryCatch({
                 BioLockR::get_BLJ_JAR()
@@ -716,36 +717,18 @@ biolockj_server <- function(input, output, session){
             }, error=function(...){""}) )
             
             allModuleInfo( tryCatch({
-                BioLockR::moduleInfo()
+                BioLockR::moduleInfo( externalModules=ifelse( extModsDir() != "", extModsDir(), NULL) )
             }, error=function(...){""}) )
-            
-            #TODO: maybe use event reactive
-            moduleRunLines( tryCatch({
-                getModuleRunLines(allModuleInfo())
-            }, error=function(...){""}) )
-            
-            message("2")
-            message(str(values$pipelineProperties))
             
             genPropInfo( tryCatch({
                 propInfoSansSpecials()
             }, error=function(...){""}) )
             
-            # derivatives of genPropInfo #TODO: maybe use event reactive
-            filePathProps( propsInfoForType(genPropInfo(), "file path") )
-            fileListProps( propsInfoForType(genPropInfo(), "list of file paths") )
-            groupedProps( groupPropsByCategory(genPropInfo()) )
             defaults$defaultPropsList[["standard"]] = namedDefaultVals( genPropInfo() )
             #TODO: update modules properties
             
-            message("5")
-            message(str(values$pipelineProperties))
-            
             save_modify_restore()
-            
-            message("6")
-            message(str(values$pipelineProperties))
-            
+
         })
         
         # Settings - ext mods dir ####
@@ -802,8 +785,9 @@ biolockj_server <- function(input, output, session){
             extModsDir( newModsDir() )
             # TODO: show spinner or progress bar or something to let the user know that a delay is expected.
             # update objects from java
-            allModuleInfo( BioLockR::moduleInfo( externalModules=extModsDir() ) ) 
-            moduleRunLines( getModuleRunLines( allModuleInfo() ) )
+            allModuleInfo( tryCatch({
+                BioLockR::moduleInfo( externalModules=ifelse( extModsDir() != "", extModsDir(), NULL) )
+            }, error=function(...){""}) )
             message("There are now ", length( moduleRunLines() ), " modules available.")
             updateSelectInput(session, "AddBioModule", choices=names(allModuleInfo()) )
             #TODO: update modules properties
@@ -1025,13 +1009,7 @@ biolockj_server <- function(input, output, session){
             values$pipelineProperties = defaults$values
             # restore state
             existingLines( readLines( tempFile ) )
-            message("Sending saved lines to populate promps, number of lines: ", length(existingLines() )) #TODO: remove
-            
-            message("5.2: ", str(values$pipelineProperties))
-            
             populateProps()
-            
-            message("5.3: ", str(values$pipelineProperties))
         })
         
         # Precheck
@@ -1045,9 +1023,8 @@ biolockj_server <- function(input, output, session){
             if (input$checkVerbose) command = paste(command, "--verbose")
             if (input$checkMapBlj) command = paste(command, "--blj")
             # if (input$extModsDir) command = paste(command, "--external-modules", input$extModsDir$name) #TODO this should use a path/to/dir
-            if (bljProjDir() != "" && input$useBljProj) command = paste(command, "--blj_proj", bljProjDir()) #TODO this should use a path/to/dir
+            if (bljProjDir() != "" && input$useBljProj) command = paste(command, "--blj_proj", bljProjDir())
             command = paste0(command, " ", input$projectName, ".config")
-            # command = paste(command, "--help") #TODO
             command
         })
         
