@@ -118,9 +118,6 @@ biolockj_server <- function(input, output, session){
         # break out properties into categories
         groupedProps <- reactiveVal( groupPropsByCategory(initpropInfo) )
         
-        # 
-        fileListUpdates <- reactiveValues()
-        
         
         #############################         Dynamic UI           #########################################
         # Defining the UI.  This would be in the ui function... but its dynamic.
@@ -291,7 +288,7 @@ biolockj_server <- function(input, output, session){
                 buildFilePathPropObservers(session, input, output, prop$property, volumes, values) #myVolumes()
             }
             for (prop in fileListProps()){
-                buildFileListPropObservers(session, input, output, prop$property, volumes, values, fileListUpdates) #myVolumes()
+                buildFileListPropObservers(session, input, output, prop$property, volumes, values) #myVolumes()
             }
         })
         
@@ -948,10 +945,7 @@ biolockj_server <- function(input, output, session){
                         ppCounter = ppCounter + 1
                         # If an input object is established, set through that
                         # otherwise, set value in pipelineProperties object Directly
-                        if( !is.null(input[[propSelectFromId(propName)]]) ){
-                            # if rendered, file path list props go this way
-                            fileListUpdates[[propName]] = vals[propName]
-                        }else if (!is.null(input[[propUiName(propName)]])){
+                        if (!is.null(input[[propUiName(propName)]])){
                             # most props, if rendered, go this way
                             updateTextInput(session, propName, value = paste(vals[propName]))
                         }else{ 

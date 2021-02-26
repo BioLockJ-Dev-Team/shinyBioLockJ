@@ -45,7 +45,7 @@ renderPropUi <- function(propName, prop, value, defaults){
     }else if(prop$type == "file path"){
         inputObj <- buildFilePathPropUI(propName, value, default)
     }else if(prop$type == "list of file paths"){
-        inputObj <- buildFileListPropUI(propName, value)
+        inputObj <- buildFileListPropUI(propName, value, default)
     }else {
         inputObj <- textInput(inputId = uiName,
                               label = propName,

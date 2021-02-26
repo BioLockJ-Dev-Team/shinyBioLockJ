@@ -4,15 +4,9 @@
 #' @param propName a string, the name of the property
 #' @param value in the case of a list property, the value of the property, most likely a single string, possibly comma-separated list
 #'
-buildFileListPropUI <- function(propName, value){
-    if (BioLockR::hasReadableValue(value)){
-        choices = BioLockR::parseListProp(value)
-        names(choices) = basename(choices)
-    }else{
-        choices = c()
-    }
+buildFileListPropUI <- function(propName, value, default){
     tagList(
-        selectInput(propSelectFromId(propName), label=propName, multiple = TRUE, choices = choices, selected = choices, width = '100%'),
+        textAreaInput(propUiName(propName), label = propName, value = ifelse(BioLockR::isReadableValue(value), value, ""), placeholder = default),
         shinyFiles::shinyFilesButton(id=propFileChooserId(propName), "add file", title = "select a file", multiple = TRUE, style = "margin-top: 1px;"),
         shinyFiles::shinyDirButton(id=propDirChooserId(propName), "add directory", title = "select a directory"),
     )
