@@ -53,9 +53,6 @@ biolockj_server <- function(input, output, session){
     
     volumes <- c(Home = fs::path_home(), shinyFiles::getVolumes()())
     
-    #TODO: remove this
-    volumes = c(volumes, DEVONLY="/Users/ieclabau/git/shinyBioLockJ/BioLockJ/dist")
-    
     #############################            SERVER            #########################################
     
     server <- function(input, output, session) {
@@ -99,6 +96,10 @@ biolockj_server <- function(input, output, session){
         }, error=function(...){""}) )
         
         extModsDir <- reactiveVal( "" )
+        
+        bljProjDir <- reactiveVal( tryCatch({
+            BioLockR::get_BLJ_PROJ()
+        }, error=function(...){""}) )
         
         bljVer <- reactiveVal(initbljVer)
         
@@ -588,43 +589,74 @@ biolockj_server <- function(input, output, session){
         
         # Precheck ####
         observeEvent(input$runPrecheckBtn, {
-            message("Running command:")
-            message(precheckCommand())
-            
             if ( length(values$moduleList) == 0 ) validate("You need to include at least one module")
             if ( BioLockR::isReadableValue(projectDirPath()) && input$radioServerType =="local" ){
                 message("Running locally with a configured project root dir; using project root dir")
                 tempFileLoc = tempfile(pattern = input$projectName, tmpdir = projectDirPath(), fileext = ".config")
             }else{
-                tempFileLoc = file.path(getwd(),"temp", configFileName())
+                tempFileLoc = file.path(getwd(),"temp", configFileName()) #TODO: use tempfile() here too
             }
             
             message("writing to file: ", tempFileLoc)
             writeLines(configLines(), tempFileLoc)
             
-            # short term cheats - TODO
+            tmpDir = tempdir(TRUE)
+            message("tmpDir for BLJ_PROJ: ", tmpDir)
             command = gsub(pattern=configFileName(), replacement = tempFileLoc, precheckCommand())
-            defaultBljProj=paste("--precheck-only", "--blj_proj", file.path(getwd(), "BioLockJ", "pipelines"))
-            command = gsub("--precheck-only", defaultBljProj, command)
-            message("...actually running command:")
-            message(command)
-            #
-            precheckRestultText(system2("exec", args = command, stdout = TRUE, stderr = TRUE))
+            message("Running command:")
+            message( command )
+            args = unlist(strsplit( substring(command, 6), split = " "))
+            precheckRestultText(system2("java", args = args, 
+                                        stdout = TRUE, stderr = TRUE,
+                                        env = paste0("BLJ_PROJ=", tmpDir)
+                                        )
+                                )
             #
             file.remove(tempFileLoc)
         })
         
         # Settings ####
         output$coreSettings <- renderUI({
+            if ( bljVer()=="" ){
+                jarBtnClass="btn-lg btn-success"
+            }else{
+                jarBtnClass=NULL
+            }
             tagList(
-                shinyFiles::shinyFilesButton("biolockjJarFile", "BioLockJ Jar File Location", "Choose jar file", multiple=FALSE),
-                shinyjs::disabled(actionButton("updateJar", "update jar location")),
+                h4("BioLockJ jar file"),
+                em("required"),
+                textOutput("showCurrentJar"),
+                shinyFiles::shinyFilesButton("biolockjJarFile", "Find BioLockJ Jar", "Choose jar file", 
+                                             multiple=FALSE, class=jarBtnClass),
+                shinyjs::disabled(actionButton("updateJar", "update", class=jarBtnClass)),
                 verbatimTextOutput("showNewJarFile"),
+                
                 br(),
-                shinyFiles::shinyDirButton("extMods", "External Modules Folder", "Choose directory", multiple=FALSE),
-                shinyjs::disabled(actionButton("updateMods", "update modules location")),
-                verbatimTextOutput("showNewExtMods"))
+                h4("BioLockJ external modules"),
+                em("optional"),
+                p("This directory should contain one or more jar files with additional BioLockJ modules. If applicable in the precheck process, this value can be used for argument --external_modules ."),
+                textOutput("showCurrentMods"),
+                shinyFiles::shinyDirButton("extMods", "Find External Modules", "Choose directory", multiple=FALSE),
+                shinyjs::disabled(actionButton("updateMods", "update")),
+                verbatimTextOutput("showNewExtMods"),
+                
+                br(),
+                h4("BioLockJ projects ouput directory"),
+                em("optional"),
+                p("This directory is where new pipleine instances will be created. If not set, precheck pipeline instances will be created in a temp folder.  In the precheck process, this value can be used for argument --blj_proj ."),
+                textOutput("showCurrentProj"),
+                shinyFiles::shinyDirButton("bljProjChooser", "Find Pipelines Directory", "Choose directory", multiple=FALSE),
+                shinyjs::disabled(actionButton("updateProj", "update")),
+                verbatimTextOutput("showNewBljProj"),
+                
+                br()
+                
+                )
         })
+        
+        output$showCurrentJar <- renderText(paste("Current location:", jarFilePath() ))
+        output$showCurrentMods <- renderText(paste("Current location:", extModsDir() ))
+        output$showCurrentProj <- renderText(paste("Current location:", bljProjDir() ))
         
         # Settings - jar file ####
         newJar = reactiveVal("")
@@ -722,6 +754,7 @@ biolockj_server <- function(input, output, session){
         # Settings - ext mods dir ####
         
         newModsDir = reactiveVal("")
+        
         shinyFiles::shinyDirChoose(input, "extMods", roots = volumes)
         output$showNewExtMods <- renderPrint( cat(newModsDir()) )
         
@@ -758,19 +791,18 @@ biolockj_server <- function(input, output, session){
         observeEvent(input$setNewMods, {
             removeModal()
             message("Switching to mods dir, for this session.")
-            extModsDir( newModsDir() )
             respondToUpdateMods()
         })
         
         observeEvent(input$rememberSetNewMods, {
             removeModal()
             message("Switching to new mods dir, for this and future sessions.---JK I have no way of remembering!")
-            # TODO: set up way to remember this preference
-            extModsDir( newModsDir() )
             respondToUpdateMods()
         })
         
         respondToUpdateMods <- reactive({
+            # TODO: set up way to remember this preference
+            extModsDir( newModsDir() )
             # TODO: show spinner or progress bar or something to let the user know that a delay is expected.
             # update objects from java
             allModuleInfo( BioLockR::moduleInfo( externalModules=extModsDir() ) ) 
@@ -780,18 +812,105 @@ biolockj_server <- function(input, output, session){
             #TODO: update modules properties
         })
         
+        observe({
+            if ( file.exists(extModsDir() )) {
+                shinyjs::enable("useExtMods")
+            }else{
+                updateCheckboxInput(session=session, "useExtMods", value=FALSE)
+                shinyjs::disable("useExtMods")
+            }
+        })
+        
+        
+        # Settings - BLJ_PROJ ####
+        
+        newProjDir = reactiveVal("")
+        
+        shinyFiles::shinyDirChoose(input, "bljProjChooser", roots = volumes)
+        output$showNewBljProj <- renderPrint( cat(newProjDir()) )
+        
+        observeEvent(input$bljProjChooser, {
+            req(input$bljProjChooser)
+            
+            if (!is.integer(input$bljProjChooser)){
+                newProjDir( shinyFiles::parseDirPath(volumes, input$bljProjChooser) )
+                message("you just chose folder: ", newProjDir() )
+                shinyjs::enable("updateProj")
+            }else{
+                newProjDir( "" )
+                message("you just chose no folder." )
+                shinyjs::disable("updateProj")
+            }
+        })
+        
+        observeEvent(input$updateProj, {
+            message("The button was pushed, the button updateProj")
+            showModal(modal_confirm_proj)
+        })
+        
+        modal_confirm_proj <- modalDialog(
+            "This action does not affect the layout of the app. Saving this value so the same location is used in future sessions is recommended.",
+            title = "Update pipeline output location ?",
+            footer = tagList(
+                actionButton("cancelProj", "Cancel"),
+                actionButton("setNewProj", "Use new path (this time)"),
+                actionButton("rememberSetNewProj", "Always use this path", class = "btn btn-success")
+            )
+        )
+        
+        observeEvent(input$cancelProj, {
+            message("JK, I don't want to change the proj dir.")
+            removeModal()
+        })
+        
+        observeEvent(input$setNewProj, {
+            message("Output will go to new BLJ_PROJ dir, for this session.")
+            good = BioLockR::set_BLJ_PROJ( newProjDir(), remember = FALSE )
+            removeModal()
+            respondToUpdateProj()
+        })
+        
+        observeEvent(input$rememberSetNewProj, {
+            message("Output will go to new BLJ_PROJ dir, for this AND future sessions.")
+            good = BioLockR::set_BLJ_PROJ( newProjDir(), remember = TRUE, doublecheck = FALSE )
+            removeModal()
+            respondToUpdateProj()
+        })
+        
+        respondToUpdateProj <- reactive({
+            bljProjDir( tryCatch({
+                BioLockR::get_BLJ_PROJ()
+            }, error=function(...){""}) )
+            shinyjs::enable("useBljProj")
+            updateCheckboxInput(session=session, "useBljProj", value=TRUE)
+        })
+        
+        observe({
+            if ( file.exists(bljProjDir() )) {
+                shinyjs::enable("useBljProj")
+            }else{
+                updateCheckboxInput(session=session, "useBljProj", value=FALSE)
+                shinyjs::disable("useBljProj")
+            }
+        })
+        
+        
         #############################           Actions            #########################################
         # reactive expressions that are intuitively like functions
         
         observeEvent(list(input$updateJar,
                           bljVer() ), {
+                              id="badJarNoteId"
                               if ( bljVer()=="" ){
-                                  showNotification(ui=tagList(strong("Cannot access BioLockJ!"), 
+                                  showNotification(id=id, 
+                                                   ui=tagList(strong("Cannot access BioLockJ!"), 
                                                                p("Correct the setting for BLJ_JAR.")),
-                                                   type = "error", duration=0, id="badJarNoteId")
+                                                   type = "error", 
+                                                   duration=0, 
+                                                   closeButton = FALSE)
                                   updateTabsetPanel(session=session, inputId="topTabs", selected = "Settings")
                               }else{
-                                  removeNotification(id="badJarNoteId") 
+                                  removeNotification(id=id) 
                               }
                           })
         
@@ -923,7 +1042,7 @@ biolockj_server <- function(input, output, session){
         
         # Precheck
         precheckCommand <- reactive({
-            command = ifelse(input$callJavaDirectly, paste("java -jar", BioLockR::get_BLJ_JAR()), "biolockj")
+            command = ifelse(input$callJavaDirectly, paste("java -jar", jarFilePath()), "biolockj")
             if (input$checkPrecheck) command = paste(command, "--precheck-only")
             if (input$checkUnused) command = paste(command, "--unused-props")
             if (input$checkDocker) command = paste(command, "--docker")
@@ -932,7 +1051,7 @@ biolockj_server <- function(input, output, session){
             if (input$checkVerbose) command = paste(command, "--verbose")
             if (input$checkMapBlj) command = paste(command, "--blj")
             # if (input$extModsDir) command = paste(command, "--external-modules", input$extModsDir$name) #TODO this should use a path/to/dir
-            # if (input$bljProjDir) command = paste(command, "--blj_proj", input$bljProjDir$name) #TODO this should use a path/to/dir
+            if (bljProjDir() != "" && input$useBljProj) command = paste(command, "--blj_proj", bljProjDir()) #TODO this should use a path/to/dir
             command = paste0(command, " ", input$projectName, ".config")
             # command = paste(command, "--help") #TODO
             command

@@ -117,9 +117,9 @@ biolockj_ui <- function(){
                              checkboxInput("checkVerbose", "--verbose", value=FALSE),
                              checkboxInput("checkMapBlj", "--blj", value=FALSE),
                              h4("arguments"),
-                             fileInput("extModsDir", "External Modules", placeholder = "optional"),
-                             # render text "contains X additional jar files
-                             fileInput("bljProjDir", "Projects (Output) Directory", placeholder = "$BLJ_PROJ")
+                             p("When running locally, values for these arguments are set in Settings. Otherwise, these options are unavailable."),
+                             checkboxInput("useExtMods", "--external-modules"),
+                             checkboxInput("useBljProj", "--blj_proj")
                          ),
                          mainPanel(
                              # width=7,
@@ -166,10 +166,9 @@ biolockj_ui <- function(){
                                                         selected = envType ) ),
                          br(), 
                          hr(),
-                         h4("Core"),
-                         strong("BioLockJ version: "),
+                         h4("BioLockJ version: "),
                          textOutput("bljVersion"),
-                         br(),
+                         hr(),
                          uiOutput("coreSettings")
                          # shinyFiles::shinyFilesButton("biolockjJarFile", "BioLockJ Jar File Location", "Choose jar file", multiple=FALSE, accept=c(".jar"), width='100%'),
                          # actionButton("updateJar", "update jar location"),
