@@ -12,7 +12,7 @@ License: GPL-3
 Encoding: UTF-8
 LazyData: true
 Imports:
-	BioLockR  (>= 0.0.0.9002),
+	BioLockR  (>= 0.0.0.9003),
 	fs,
 	shiny,
 	shinyBS,
