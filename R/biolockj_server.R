@@ -450,20 +450,8 @@ biolockj_server <- function(input, output, session){
         })
         
         # Home - load config ####
-        output$LocalExistingConfig <- renderUI({
-            if (input$serverType == "local"){
-                shinyFiles::shinyFileChoose(input, "LocalExistingConfig", roots = volumes, session = session)
-                tagList(
-                    hr(),
-                    h2("Load an existing config file"),
-                    shinyFiles::shinyFilesButton("LocalExistingConfig", "Choose a local config file", "Please select a file", multiple = FALSE, viewtype = "list"),
-                    p(),
-                    verbatimTextOutput("showLocalFile", placeholder=TRUE),
-                    shinyjs::disabled(actionButton("populateFromLocalConfig", "pull values"))
-                )
-                
-            }
-        })
+        shinyFiles::shinyFileChoose(input, "LocalExistingConfig", roots = volumes, session = session)
+        
         observeEvent( localFilePath(), {
             if ( isTruthy(localFilePath()) && file.exists(localFilePath())){
                 shinyjs::enable("populateFromLocalConfig")
@@ -1052,6 +1040,7 @@ biolockj_server <- function(input, output, session){
         # These make the app nice, but they are not fundamental to the understanding of the layout and workings.
         
         observe({
+            updateTabsetPanel(session=session, "localExistingConfig", selected = input$serverType)
             updateTabsetPanel(session=session, "localDefaultPropsFinder", selected = input$serverType)
         })
         

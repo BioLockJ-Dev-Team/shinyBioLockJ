@@ -47,7 +47,20 @@ biolockj_ui <- function(){
                                           p(em("When you pull values from an existing file, the values from the file will replace anything configured here.")),
                                           fileInput("uploadExistingConfig", label="Upload an existing config file", accept = c(".properties", ".config")),
                                           shinyjs::disabled(actionButton("populateExistingConfig", "pull values")),
-                                          uiOutput("LocalExistingConfig"),
+                                          hr(),
+                                          tabsetPanel(
+                                              id = "localExistingConfig",
+                                              type = "hidden",
+                                              tabPanelBody("remote", "When run locally, there is also an option to find local files."),
+                                              tabPanelBody("virtual", "When run locally, there is also an option to find local files."),
+                                              tabPanelBody("local",
+                                                           h2("Load an existing config file"),
+                                                           shinyFiles::shinyFilesButton("LocalExistingConfig", "Choose a local config file", "Please select a file", multiple = FALSE, viewtype = "list"),
+                                                           p(),
+                                                           verbatimTextOutput("showLocalFile", placeholder=TRUE),
+                                                           shinyjs::disabled(actionButton("populateFromLocalConfig", "pull values"))
+                                              )
+                                          ),
                                           hr(),
                                           uiOutput("examples")
                                  )
