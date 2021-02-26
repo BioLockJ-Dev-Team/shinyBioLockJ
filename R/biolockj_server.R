@@ -451,7 +451,7 @@ biolockj_server <- function(input, output, session){
         
         # Home - load config ####
         output$LocalExistingConfig <- renderUI({
-            if (input$radioServerType == "local"){
+            if (input$serverType == "local"){
                 shinyFiles::shinyFileChoose(input, "LocalExistingConfig", roots = volumes, session = session)
                 tagList(
                     hr(),
@@ -482,7 +482,7 @@ biolockj_server <- function(input, output, session){
             message("The button got pushed: populateFromLocalConfig")
             req( file.exists(localFilePath()) )
             existingLines( readLines( localFilePath() ) )
-            if (input$radioServerType == "local") projectDirPath( dirname(localFilePath()) )
+            if (input$serverType == "local") projectDirPath( dirname(localFilePath()) )
             else projectDirPath( "" )
             populateModules()
             populateProps()
@@ -512,24 +512,40 @@ biolockj_server <- function(input, output, session){
         })
         
         # Defaults ####
-        observeEvent(input$defaultPropsFiles,{
-            message("Event: input$defaultPropsFiles")
-            req(input$defaultPropsFiles)
-            for (i in 1:nrow(input$defaultPropsFiles)){
-                lines = readLines(input$defaultPropsFiles$datapath[i])
+        # a dataframe, such as that returned by inputFiles
+        newDefaultPropsFiles <- reactiveVal()
+        readNewDefaultProps = reactive({
+            req( newDefaultPropsFiles() )
+            for (i in 1:nrow( newDefaultPropsFiles() )){
+                lines = readLines( newDefaultPropsFiles()$datapath[i] )
                 allProps = BioLockR::extract_defautlProps(BioLockR::read_properties( lines ))
                 if ( length(allProps$defaultProps)==0 || input$ignoreChain){
-                    defaults$defaultPropsChain[input$defaultPropsFiles$name[i]] = NA
+                    defaults$defaultPropsChain[newDefaultPropsFiles()$name[i]] = NA
                 }else{
-                    defaults$defaultPropsChain[[input$defaultPropsFiles$name[i]]] = allProps$defaultProps
+                    defaults$defaultPropsChain[[newDefaultPropsFiles()$name[i]]] = allProps$defaultProps
                 }
-                defaults$defaultPropsList[[input$defaultPropsFiles$name[i]]] = allProps$properties
+                defaults$defaultPropsList[[newDefaultPropsFiles()$name[i]]] = allProps$properties
             }
             wasSelected = input$selectDefaultProps
-            defaults$uploadedFiles <- rbind(defaults$uploadedFiles, input$defaultPropsFiles)
+            defaults$uploadedFiles <- rbind(defaults$uploadedFiles, newDefaultPropsFiles())
             updateSelectInput(session, "selectDefaultProps", choices = defaults$uploadedFiles$name, selected=wasSelected)
             shinyjs::enable("selectDefaultProps")
             updateCheckboxInput(session, "ignoreChain", value=FALSE)
+        })
+        
+        observeEvent(input$defaultPropsFiles,{
+            message("Event: input$defaultPropsFiles")
+            req(input$defaultPropsFiles)
+            newDefaultPropsFiles( input$defaultPropsFiles )
+            readNewDefaultProps()
+        })
+        
+        shinyFiles::shinyFileChoose(input, "findLocalDefaultProps", roots = volumes, session = session)
+        observeEvent( input$findLocalDefaultProps, {
+            message("Event: input$findLocalDefaultProps")
+            req( ! is.integer(input$findLocalDefaultProps) )
+            newDefaultPropsFiles( shinyFiles::parseFilePaths(volumes, input$findLocalDefaultProps) )
+            readNewDefaultProps()
         })
         
         observe({
@@ -587,7 +603,7 @@ biolockj_server <- function(input, output, session){
         # Precheck ####
         observeEvent(input$runPrecheckBtn, {
             if ( length(values$moduleList) == 0 ) validate("You need to include at least one module")
-            if ( BioLockR::isReadableValue(projectDirPath()) && input$radioServerType =="local" ){
+            if ( BioLockR::isReadableValue(projectDirPath()) && input$serverType =="local" ){
                 message("Running locally with a configured project root dir; using project root dir")
                 tempFileLoc = tempfile(pattern = input$projectName, tmpdir = projectDirPath(), fileext = ".config")
             }else{
@@ -1034,6 +1050,10 @@ biolockj_server <- function(input, output, session){
         #############################           Synchrony          #########################################
         # Reactive espressions and observers that serve to keep things smooth and synchronized.
         # These make the app nice, but they are not fundamental to the understanding of the layout and workings.
+        
+        observe({
+            updateTabsetPanel(session=session, "localDefaultPropsFinder", selected = input$serverType)
+        })
         
         # Home ####
         observeEvent(projectDirPath(), {
