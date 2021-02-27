@@ -10,6 +10,10 @@ biolockj_ui <- function(){
     ui <-  fluidPage( 
         shinyFeedback::useShinyFeedback(),
         shinyjs::useShinyjs(),
+        tags$head( # notifications often have file paths, so make the box wide.
+            tags$style( HTML(".shiny-notification {
+             position:fixed; bottom: calc(2%); left: calc(2%); right: calc(2%); }") )
+        ),
         navbarPage(id = "topTabs",
             position = "fixed-top",
             theme = shinythemes::shinytheme("cerulean"),

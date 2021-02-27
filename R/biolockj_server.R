@@ -990,12 +990,16 @@ biolockj_server <- function(input, output, session){
             )
         )
         output$defaultsModal <- renderUI({
+            currentSetting = values$defaultProps
+            current = ifelse(BioLockR::hasReadableValue( currentSetting ), currentSetting, "none")
+            newSetting = BioLockR::extract_defautlProps(BioLockR::read_properties( existingLines() ))$defaultProps
+            new = ifelse(BioLockR::hasReadableValue( newSetting ), newSetting, "none")
             tagList(
                 "The defaults used in the config file you have loaded are different the default file(s) currently set.",
                 h4("current defaults come from:"),
-                values$defaultProps,
+                current,
                 h4("config file uses defaults from:"),
-                BioLockR::extract_defautlProps(BioLockR::read_properties( existingLines() ))$defaultProps
+                new
             )
         })
         observeEvent(input$clearAllDP, {
@@ -1011,12 +1015,15 @@ biolockj_server <- function(input, output, session){
         })
         observeEvent(input$setNewDP, {
             updateTabsetPanel(session=session, "topTabs", selected="Defaults")
-            files = BioLockR::parseListProp(BioLockR::extract_defautlProps(BioLockR::read_properties( existingLines() ))$defaultProps)
+            files = BioLockR::extract_defautlProps(BioLockR::read_properties( existingLines() ))$defaultProps
             if (BioLockR::hasReadableValue(files)){
                 showNotification(tagList(
-                    strong(paste("Config file", "has pipeline.defaultProps:")),
-                    unlist(lapply(files, writeFilePath, projectDirPath(), useRelPath=FALSE))
-                ), duration = NULL, closeButton = TRUE, session = session, type="message")
+                    # using input$projectName assumes that this notification is send as part of the process of loading a config file, 
+                    # which includes setting the project name to match the config file name.
+                    strong(paste("File", input$projectName, "had pipeline.defaultProps:")),
+                    br(), 
+                    writeFilePathList(files, projectDirPath(), useRelPath=FALSE)), 
+                    duration = NULL, closeButton = TRUE, session = session, type="message")
             }
             removeModal()
         })
