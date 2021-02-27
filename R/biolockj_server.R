@@ -164,6 +164,10 @@ biolockj_server <- function(input, output, session){
                 shinyFeedback::showFeedbackSuccess("selectDefaultProps")
             }
             chainLinks = intersect(chainInfo$chained, names(defaults$defaultPropsChain))
+            message("chainInfo$chained: ", chainInfo$chained)
+            message("basename(chainInfo$chained): ", basename(chainInfo$chained))
+            message("names(defaults$defaultPropsChain): ", names(defaults$defaultPropsChain))
+            message("chainLinks: ", chainLinks)
             df = utils::stack(defaults$defaultPropsChain[chainLinks])
             names(df) = c("linksTo", "file")
             df[,c("file", "linksTo")]
@@ -183,7 +187,7 @@ biolockj_server <- function(input, output, session){
         })
         
         output$currentDefaultProps <- renderPrint({
-            if(!is.null(values$defaultProps) && !is.na(values$defaultProps)){
+            if( BioLockR::hasReadableValue(values$defaultProps) ){
                 cat( writeConfigProp("pipeline.defaultProps", values$defaultProps, "list") )
             }else{
                 cat("# no pipeline.defaultProps")
@@ -474,6 +478,7 @@ biolockj_server <- function(input, output, session){
             else projectDirPath( "" )
             populateModules()
             populateProps()
+            populateDefaultProps()
             populateProjectName( basename( localFilePath() ) )
             updateTabsetPanel(session, "HomeTabs", selected="Save to file")
         })
@@ -485,6 +490,7 @@ biolockj_server <- function(input, output, session){
             projectDirPath( "" )
             populateModules()
             populateProps()
+            populateDefaultProps()
             populateProjectName(input$uploadExistingConfig$name)
             updateTabsetPanel(session, "HomeTabs", selected="Save to file")
         })
@@ -495,6 +501,7 @@ biolockj_server <- function(input, output, session){
             projectDirPath( dirname(input$selectExample) )
             populateModules()
             populateProps()
+            populateDefaultProps()
             populateProjectName( basename( input$selectExample ) )
             updateTabsetPanel(session, "HomeTabs", selected="Save to file")
         })
@@ -516,7 +523,10 @@ biolockj_server <- function(input, output, session){
             }
             wasSelected = input$selectDefaultProps
             defaults$uploadedFiles <- rbind(defaults$uploadedFiles, newDefaultPropsFiles())
-            updateSelectInput(session, "selectDefaultProps", choices = defaults$uploadedFiles$name, selected=wasSelected)
+            if (input$serverType == "local") choices = defaults$uploadedFiles$datapath
+            else choices = defaults$uploadedFiles$name
+            names(choices) = basename(choices)
+            updateSelectInput(session, "selectDefaultProps", choices = choices, selected=wasSelected)
             shinyjs::enable("selectDefaultProps")
             updateCheckboxInput(session, "ignoreChain", value=FALSE)
         })
@@ -544,7 +554,13 @@ biolockj_server <- function(input, output, session){
         
         observeEvent(input$loadDefaultProps, {
             message("Pushed button: loadDefaultProps")
-            chainInfo = orderDefaultPropFiles(start=input$selectDefaultProps, chain=defaults$defaultPropsChain)
+            selectDefaultProps_value(input$selectDefaultProps)
+            loadDefaultProps_action()
+        })
+        selectDefaultProps_value = reactiveVal( character(0) )
+        loadDefaultProps_action <- reactive({
+            message("Do the loadDefaultProps action...")
+            chainInfo = orderDefaultPropFiles(start=selectDefaultProps_value(), chain=defaults$defaultPropsChain)
             if (length(chainInfo$dangling) > 0){
                 shinyjs::disable("loadDefaultProps")
                 shinyFeedback::showFeedbackDanger("selectDefaultProps", c("Missing file: ", BioLockR::printListProp(chainInfo$missing)))
@@ -555,7 +571,7 @@ biolockj_server <- function(input, output, session){
                 defaults$activeFiles = chainInfo$chained
                 save_modify_restore()
                 # restore state
-                values$defaultProps = input$selectDefaultProps
+                values$defaultProps = selectDefaultProps_value()
                 updateCheckboxInput(session, "include_standard_defaults", value=prevCheckBox)
                 shinyFeedback::hideFeedback("selectDefaultProps")
             }
@@ -921,7 +937,7 @@ biolockj_server <- function(input, output, session){
             message("Populating properties...")
             ppCounter=0
             newProps = BioLockR::extract_defautlProps(BioLockR::read_properties( existingLines() ))
-            values$defaultProps = newProps$defaultProps
+            #values$defaultProps = newProps$defaultProps
             vals = newProps$properties
             message("...working with up to ", length(vals), " properties...")
             if (length(vals) > 0 ){
@@ -947,6 +963,62 @@ biolockj_server <- function(input, output, session){
                 }
             }
             message("...done populating ", ppCounter, " properties.")
+        })
+        
+        populateDefaultProps <- reactive({
+            message("Consider default properties...")
+            newProps = BioLockR::extract_defautlProps(BioLockR::read_properties( existingLines() ))
+            if ( !BioLockR::hasReadableValue( values$defaultProps ) 
+                 && !BioLockR::hasReadableValue( newProps$defaultProps )){
+                message("No need to change the underlying defaults.")
+            }else if ( BioLockR::hasReadableValue( values$defaultProps ) 
+                       && BioLockR::hasReadableValue( newProps$defaultProps )
+                       && values$defaultProps == newProps$defaultProps ){
+                message("No need to change the underlying defaults.")
+            }else{
+                showModal(modal_confirm_defaults)
+            }
+        })
+        
+        modal_confirm_defaults <- modalDialog(
+            uiOutput("defaultsModal"),
+            title = "Update default props",
+            footer = tagList(
+                actionButton("clearAllDP", "Clear all defaults files", width = '100%'),br(),
+                actionButton("keepOldDP", "Keep current defaults", width = '100%'),br(),
+                actionButton("setNewDP", "Go to Defaults tab", width = '100%'),p()
+            )
+        )
+        output$defaultsModal <- renderUI({
+            tagList(
+                "The defaults used in the config file you have loaded are different the default file(s) currently set.",
+                h4("current defaults come from:"),
+                values$defaultProps,
+                h4("config file uses defaults from:"),
+                BioLockR::extract_defautlProps(BioLockR::read_properties( existingLines() ))$defaultProps
+            )
+        })
+        observeEvent(input$clearAllDP, {
+            message("The only defaults are the 'standard' defaults.")
+            updateSelectInput(session=session, "selectDefaultProps", selected = character(0))
+            selectDefaultProps_value( character(0) )
+            loadDefaultProps_action()
+            removeModal()
+        })
+        observeEvent(input$keepOldDP, {
+            message("The config file was loaded onto the existing default properties files.")
+            removeModal()
+        })
+        observeEvent(input$setNewDP, {
+            updateTabsetPanel(session=session, "topTabs", selected="Defaults")
+            files = BioLockR::parseListProp(BioLockR::extract_defautlProps(BioLockR::read_properties( existingLines() ))$defaultProps)
+            if (BioLockR::hasReadableValue(files)){
+                showNotification(tagList(
+                    strong(paste("Config file", "has pipeline.defaultProps:")),
+                    unlist(lapply(files, writeFilePath, projectDirPath(), useRelPath=FALSE))
+                ), duration = NULL, closeButton = TRUE, session = session, type="message")
+            }
+            removeModal()
         })
         
         configLines <- reactive({
@@ -1010,7 +1082,10 @@ biolockj_server <- function(input, output, session){
                 newProps = defaults$defaultPropsList[[file]]
                 defaults$values[names(newProps)] = newProps
             }
-            values$pipelineProperties = defaults$values
+            genPropsWithDefaults = intersect(names(defaults$values), names(genPropInfo()))
+            for (propName in genPropsWithDefaults){
+                values$pipelineProperties[propName] = defaults$values[propName]
+            }
             # restore state
             existingLines( readLines( tempFile ) )
             populateProps()

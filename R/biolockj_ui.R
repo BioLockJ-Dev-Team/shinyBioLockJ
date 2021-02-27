@@ -156,15 +156,14 @@ biolockj_ui <- function(){
                          em("This does not affect your configuration."),
                          br(),br(),
                          checkboxInput("ignoreChain", "ignore pipeline.defaultProps in this file", value=FALSE),
-                         fileInput("defaultPropsFiles", label="upload default properties files", multiple = TRUE, 
-                                   accept = c(".properties", ".config")),
                          tabsetPanel(
                              id = "localDefaultPropsFinder",
                              type = "hidden",
-                             tabPanelBody("remote", "When run locally, there is also an option to find local files."),
+                             tabPanelBody("remote", fileInput("defaultPropsFiles", label="upload default properties files", multiple = TRUE, 
+                                                              accept = c(".properties", ".config"))),
                              tabPanelBody("virtual", "When run locally, there is also an option to find local files."),
                              tabPanelBody("local", shinyFiles::shinyFilesButton("findLocalDefaultProps", 
-                                                                                "Find defaultProps files", 
+                                                                                "Find properties files", 
                                                                                 "Select files...", 
                                                                                 multiple = TRUE))
                          ),
