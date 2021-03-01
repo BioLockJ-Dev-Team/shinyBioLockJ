@@ -1017,13 +1017,22 @@ biolockj_server <- function(input, output, session){
             updateTabsetPanel(session=session, "topTabs", selected="Defaults")
             files = BioLockR::extract_defautlProps(BioLockR::read_properties( existingLines() ))$defaultProps
             if (BioLockR::hasReadableValue(files)){
+                fullPath = writeFilePathList(files, projectDirPath(), useRelPath=FALSE)
+                modal_path_view <- modalDialog( fullPath, footer=actionButton("closeViewPath", "done"))
+                observeEvent(input$closeViewPath, {
+                    removeModal()
+                })
+                observeEvent(input$viewFullPath, {
+                    showModal(modal_path_view)
+                })
+                # using input$projectName assumes that this notification is send as part of the process of loading a config file, 
+                # which includes setting the project name to match the config file name.
                 showNotification(tagList(
-                    # using input$projectName assumes that this notification is send as part of the process of loading a config file, 
-                    # which includes setting the project name to match the config file name.
-                    strong(paste("File", input$projectName, "had pipeline.defaultProps:")),
+                    strong(paste("File", input$projectName, "had pipeline.defaultProps=")),
                     br(), 
-                    writeFilePathList(files, projectDirPath(), useRelPath=FALSE)), 
-                    duration = NULL, closeButton = TRUE, session = session, type="message")
+                    fullPath), 
+                    action=actionButton("viewFullPath", "view full path"),
+                    duration = 120, closeButton = TRUE, session = session, type="message")
             }
             removeModal()
         })
