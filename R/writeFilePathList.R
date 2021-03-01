@@ -5,10 +5,5 @@
 writeFilePathList <- function(pathList, projectDir, useRelPath){
     paths = BioLockR::parseListProp(pathList)
     newPaths = sapply(paths, writeFilePath, projectDir=projectDir, useRelPath=useRelPath)
-    # if (useRelPath){
-    #     newPaths = writeRelPath(paths, projectDir)
-    # }else{
-    #     newPaths = writeFullPath(paths, projectDir)
-    # }
     return(BioLockR::printListProp(newPaths))
 }

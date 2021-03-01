@@ -14,7 +14,6 @@ buildFilePathPropObservers <- function(session, input, output, propName, myVolum
     observeEvent( input[[propFileChooserId(propName)]], {
         if (! is.integer(input[[propFileChooserId(propName)]])){
             path = shinyFiles::parseFilePaths(myVolumesNow, input[[propFileChooserId(propName)]])$datapath
-            message("path: ", path)
             updateTextInput(session=session, propUiName(propName), value=as.character(path) )
         }
     })
