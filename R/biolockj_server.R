@@ -87,7 +87,7 @@ biolockj_server <- function(input, output, session){
             BioLockR::get_BLJ_JAR()
         }, error=function(...){""}) )
         
-        extModsDir <- reactiveVal( "" )
+        extModsDir <- reactiveVal( NULL )
         
         bljProjDir <- reactiveVal( tryCatch({
             BioLockR::get_BLJ_PROJ()
@@ -121,6 +121,20 @@ biolockj_server <- function(input, output, session){
         
         #############################         Dynamic UI           #########################################
         # Defining the UI.  This would be in the ui function... but its dynamic.
+        
+        # Modal - Please wait ####
+        modal_please_wait <- modalDialog(title="Just a moment", 
+                                         htmlOutput("updating"), 
+                                         fade=FALSE, 
+                                         easyClose = TRUE,
+                                         footer = NULL)
+        output$updating <- renderUI(HTML(paste(updatingText(), collapse="<br/>")))
+        updatingText <- reactiveVal("Updating...")
+        appendUpdatingText <- function(old, new){
+            text = c(old, new)
+            updatingText(text)
+            return(text)
+        }
         
         # Home ####
         
@@ -232,8 +246,6 @@ biolockj_server <- function(input, output, session){
                     tabPanel(groupName,
                              p(paste("See the user guide for more info about", groupName, "properties.", collaps=" ")),
                              lapply(group, function(propName){
-                                 message("genPropInfo - ", genPropInfo()[[propName]])
-                                 message("values$pipelineProperties - ", isolate(values$pipelineProperties[propName]))
                                  propUI <- renderPropUi(propName, 
                                                         genPropInfo()[[propName]], 
                                                         isolate(values$pipelineProperties[propName]),
@@ -715,6 +727,7 @@ biolockj_server <- function(input, output, session){
             message("Switching to newJar path, for this session.")
             good = BioLockR::set_BLJ_JAR( newJar(), remember = FALSE )
             if (good) respondToUpdateJar()
+            else (showNotification("There was a problem setting the jar path.", type="error"))
         })
         
         observeEvent(input$rememberSetNewJar, {
@@ -722,35 +735,74 @@ biolockj_server <- function(input, output, session){
             message("Switching to newJar path, for this and future sessions.")
             good = BioLockR::set_BLJ_JAR( newJar(), remember = TRUE, doublecheck = FALSE )
             if (good) respondToUpdateJar()
+            else (showNotification("There was a problem setting the jar path.", type="error"))
         })
         
-        respondToUpdateJar <- reactive({
-            # TODO: show spinner or progress bar or something to let the user know that a delay is expected.
+        respondToUpdateBljJar <- reactive({
+            msg = appendUpdatingText("Updating BioLockJ jar file...", "")
+            showModal(modal_please_wait)
             
-            # update objects from java
+            msg = appendUpdatingText(msg, "Updating jar file location...")
             jarFilePath( tryCatch({
                 BioLockR::get_BLJ_JAR()
             }, error=function(...){""}) )
+            msg = appendUpdatingText(msg, "done.")
             
+            msg = appendUpdatingText(msg, "Updating biolockj version...")
             bljVer( tryCatch({
                 BioLockR::biolockjVersion()
             }, error=function(...){""}) )
+            msg = appendUpdatingText(msg, "done.")
             
+            respondToUpdateJar()
+        })
+            
+        
+        respondToUpdateJar <- reactive({
+            msg = isolate( updatingText() )
+            msg = appendUpdatingText(msg, "")
+            showModal(modal_please_wait)
+            
+            msg = appendUpdatingText(msg, "Updating available modules...")
             allModuleInfo( tryCatch({
-                BioLockR::moduleInfo( externalModules=ifelse( extModsDir() != "", extModsDir(), NULL) )
+                BioLockR::moduleInfo( externalModules=extModsDir() )
             }, error=function(...){""}) )
             
+            updateSelectInput(session, "AddBioModule", choices=names(allModuleInfo()) )
+            
+            msg = appendUpdatingText(msg, "done.")
+            
+            msg = appendUpdatingText(msg, "Updating available properties...")
             genPropInfo( tryCatch({
                 propInfoSansSpecials()
             }, error=function(...){""}) )
+            msg = appendUpdatingText(msg, "done.")
             
+            msg = appendUpdatingText(msg, "Updating property default values...")
             defaults$defaultPropsList[["standard"]] = namedDefaultVals( genPropInfo() )
+            
             #TODO: update modules properties
             
             save_modify_restore()
-
+            msg = appendUpdatingText(msg, "done.")
+            
+            msg = appendUpdatingText(msg, "Rendering properties...")
+            message("Go to the Properties tab...")
+            updateTabsetPanel(session, "topTabs", selected="Properties") 
+            showModal(modal_please_wait)
+            shinyjs::delay(500, {
+                msg = appendUpdatingText(msg, "done.")
+                msg = appendUpdatingText(msg, "")
+                msg = appendUpdatingText(msg, "Done with update.")
+                updateTabsetPanel(session, "topTabs", selected="Settings")
+                showModal(modal_please_wait)
+                shinyjs::delay(500, {
+                    removeModal()
+                    updatingText("Updating...")
+                }) 
+            })
         })
-        
+
         # Settings - ext mods dir ####
         
         newModsDir = reactiveVal("")
@@ -801,20 +853,18 @@ biolockj_server <- function(input, output, session){
         })
         
         respondToUpdateMods <- reactive({
+            msg = appendUpdatingText("Updating external modules directory...", "")
+            showModal(modal_please_wait)
+            
+            msg = appendUpdatingText(msg, "Updating external module dir setting...")
             # TODO: set up way to remember this preference
             extModsDir( newModsDir() )
-            # TODO: show spinner or progress bar or something to let the user know that a delay is expected.
-            # update objects from java
-            allModuleInfo( tryCatch({
-                BioLockR::moduleInfo( externalModules=ifelse( extModsDir() != "", extModsDir(), NULL) )
-            }, error=function(...){""}) )
-            message("There are now ", length( moduleRunLines() ), " modules available.")
-            updateSelectInput(session, "AddBioModule", choices=names(allModuleInfo()) )
-            #TODO: update modules properties
+
+            respondToUpdateJar()
         })
         
         observe({
-            if ( file.exists(extModsDir() )) {
+            if ( BioLockR::isReadableValue( extModsDir() ) && file.exists(extModsDir() )) {
                 shinyjs::enable("useExtMods")
             }else{
                 updateCheckboxInput(session=session, "useExtMods", value=FALSE)
