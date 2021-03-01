@@ -51,16 +51,16 @@ biolockj_server <- function(input, output, session){
         
         #############################         Core Objects         #########################################
         
-        ## Use reactive objects as the single source of truth.
+        ## Use reactive objects as the single source of truth
         values <- reactiveValues(defaultProps=NA,
                                  moduleList=vector("character"), 
-                                 customProps=list(), 
                                  removedModules=vector("character"),
+                                 customProps=list(), 
                                  ### IMPORTANT !
-                                 # GET the property values through this object; the pipelineProperties reactiveValues object
+                                 # GET the property values through this object; the generalProps reactiveValues object
                                  # SET the property values through the input$[propName] object
                                  # an observeEvent ensures the flow of info from the input$ to the reactiveValues
-                                 pipelineProperties=initGenDefaults # TODO: maybe change name to backboneProperties
+                                 generalProps=initGenDefaults 
                                  # moduleProperties=modulePerProp(initmoduleInfo)
         )
         
@@ -102,7 +102,6 @@ biolockj_server <- function(input, output, session){
             getModuleRunLines(allModuleInfo())
         })
 
-        
         genPropInfo <- reactiveVal(initpropInfo)
         
         filePathProps <- eventReactive(genPropInfo(), {
@@ -248,10 +247,10 @@ biolockj_server <- function(input, output, session){
                              lapply(group, function(propName){
                                  propUI <- renderPropUi(propName, 
                                                         genPropInfo()[[propName]], 
-                                                        isolate(values$pipelineProperties[propName]),
+                                                        isolate(values$generalProps[propName]),
                                                         isolate(defaults))
                                  observeEvent(input[[propUiName(propName)]],{
-                                     values$pipelineProperties[propName] <- input[[propUiName(propName)]]
+                                     values$generalProps[propName] <- input[[propUiName(propName)]]
                                      req(input$checkLiveFeedback)
                                      req(genPropInfo()[[propName]]$type != "boolean")
                                      shinyFeedback::hideFeedback( propUiName(propName) )
@@ -354,8 +353,8 @@ biolockj_server <- function(input, output, session){
             message("df has ", nrow(df), " rows.")
             #
             # general property defaults are reflected in general property ui
-            df[df$propName %in% names(values$pipelineProperties), "isCustom"] <- FALSE
-            # df = df[! df$propName %in% names(values$pipelineProperties),]
+            df[df$propName %in% names(values$generalProps), "isCustom"] <- FALSE
+            # df = df[! df$propName %in% names(values$generalProps),]
             message("After removing general props, df has ", sum(df$isCustom), " rows.")
             #
             # mdoule property defaults are reflected in ui when that module is added
@@ -998,14 +997,14 @@ biolockj_server <- function(input, output, session){
                     }else if ( propName %in% names(genPropInfo()) ){
                         ppCounter = ppCounter + 1
                         # If an input object is established, set through that
-                        # otherwise, set value in pipelineProperties object Directly
+                        # otherwise, set value in generalProps object Directly
                         if (!is.null(input[[propUiName(propName)]])){
                             # most props, if rendered, go this way
                             updateTextInput(session, propName, value = paste(vals[propName]))
                         }else{ 
                             # file path props got this way, rendered or not
                             # all props, if NOT rendered, go this way
-                            values$pipelineProperties[propName] <- vals[propName]
+                            values$generalProps[propName] <- vals[propName]
                         }
                     }else{
                         values$customProps[[propName]] <- vals[propName]
@@ -1106,9 +1105,9 @@ biolockj_server <- function(input, output, session){
                 }
             }
             lines = c(lines, "", "# General Properties")
-            if ( BioLockR::hasReadableValue(values$pipelineProperties) ){#TODO something better
-                for(p in names(values$pipelineProperties)){
-                    value = values$pipelineProperties[p]
+            if ( BioLockR::hasReadableValue(values$generalProps) ){#TODO something better
+                for(p in names(values$generalProps)){
+                    value = values$generalProps[p]
                     if ( doIncludeProp(p, value, default=defaults$values[p], input=input) ){
                         line = writeConfigProp(p, value, genPropInfo()[[p]]$type, projectDirPath(), input$checkRelPaths)
                         lines = c(lines, line)
@@ -1142,7 +1141,7 @@ biolockj_server <- function(input, output, session){
             writeLines(configLines(), tempFile)
             # modify underlying state
             defaults$values = vector("character")
-            values$pipelineProperties = vector("character")
+            values$generalProps = vector("character")
             defaults$values = defaults$defaultPropsList[["standard"]]
             for (file in defaults$activeFiles){
                 newProps = defaults$defaultPropsList[[file]]
@@ -1150,7 +1149,7 @@ biolockj_server <- function(input, output, session){
             }
             genPropsWithDefaults = intersect(names(defaults$values), names(genPropInfo()))
             for (propName in genPropsWithDefaults){
-                values$pipelineProperties[propName] = defaults$values[propName]
+                values$generalProps[propName] = defaults$values[propName]
             }
             # restore state
             existingLines( readLines( tempFile ) )
@@ -1258,7 +1257,7 @@ biolockj_server <- function(input, output, session){
         })
         
         # Properties ####
-        # The essential observers that keep the pipelineProperties synchronized are defined within 
+        # The essential observers that keep the generalProps synchronized are defined within 
         # the renderUI function that creates the inputs.
         
         # Precheck ####

@@ -26,6 +26,6 @@ buildFilePathPropObservers <- function(session, input, output, propName, myVolum
     })
 
     observeEvent(input[[propUiName(propName)]], {
-        values$pipelineProperties[propName] = input[[propUiName(propName)]]
+        values$generalProps[propName] = input[[propUiName(propName)]]
     })
 }
