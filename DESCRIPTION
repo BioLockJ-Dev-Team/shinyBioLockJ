@@ -11,8 +11,9 @@ Description: This package uses shiny to create an interface for the BioLockJ jav
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
+SystemRequirements: java (>= 1.8),
 Imports:
-	BioLockR  (>= 0.0.0.9003),
+	BioLockR  (>= 0.0.0.9004),
 	fs,
 	shiny,
 	shinyBS,
@@ -23,3 +24,5 @@ Imports:
 	sortable
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1
+Suggests: 
+    testthat
