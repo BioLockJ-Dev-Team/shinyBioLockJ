@@ -7,7 +7,7 @@
 orderDefaultPropFiles(start, chain)
 }
 \arguments{
-\item{start}{a file name (basename) that correstponds to one of the names of the chain list}
+\item{start}{a file name (full path or basename) that correstponds to one of the names of the chain list}
 
 \item{chain}{a named list whose names are file names (basename) and whose elements are
 each the vecter of file names (full file path) that the named file lists as default props.}
@@ -20,4 +20,7 @@ chained: a vector of basenames, ending with 'start'.  This is the order in which
 }
 \description{
 Model default props inter-dependences
+}
+\details{
+On a remote server, the value of \emph{start} is already the basename; locally, its a full file path. If a file path is passed in, the basename of the path is taken to match to the names of \emph{chain}.
 }

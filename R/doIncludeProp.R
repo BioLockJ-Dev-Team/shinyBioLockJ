@@ -8,9 +8,7 @@
 #' @param input in general, input=input
 #'
 #' @return
-#' @export
-#'
-#' @examples
+#' 
 doIncludeProp <- function(property, value, default=NULL, input){
     if (BioLockR::isReadableValue(value)){
         notTheDefault = BioLockR::isReadableValue(default) && value != default

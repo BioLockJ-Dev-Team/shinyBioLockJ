@@ -15,3 +15,6 @@ the alias
 \description{
 Derive the module Alias from a given runline
 }
+\seealso{
+classFromRunline
+}

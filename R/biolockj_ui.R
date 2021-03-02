@@ -109,9 +109,9 @@ biolockj_ui <- function(){
                                    )),
                          fluidPage(p("navbar"),p("spacer"),
                                    h2("Module Properties"),
-                                   # uiOutput("modProps"),
-                                   p(),
-                                   textOutput("modulePropsHeader"))
+                                   textOutput("modulePropsHeader"),
+                                   uiOutput("modProps")
+                                   )
                      )),
             # Precheck ####
             tabPanel("Precheck",

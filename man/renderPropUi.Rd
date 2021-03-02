@@ -4,18 +4,34 @@
 \alias{renderPropUi}
 \title{General BioLockJ Properties UI}
 \usage{
-renderPropUi(propName, prop, default, value, defaults)
+renderPropUi(
+  propName,
+  prop,
+  value,
+  defaults,
+  ownership = "general",
+  moduleId = NULL,
+  trailingUiFun = function() {     tagList(hr()) }
+)
 }
 \arguments{
 \item{propName}{a property name, such script.numThreads}
 
 \item{prop}{a property object, which is a list that contains type, description, etc}
 
-\item{default}{the current default value}
-
 \item{value}{the current value}
 
 \item{defaults}{the list of lists of representation of defaults}
+
+\item{ownership}{the ownership category for the proprety, one of c("general", "shared", "owned", "override")}
+
+\item{moduleId}{if ownership is not "general", which module is the ownership referenceing}
+
+\item{trailingUiFun}{a function that takes no args and returns a tagList object}
+
+\item{default}{the current default value}
+
+\item{trailingUI}{ui element (or tagList of elements) added to the end of the returned property UI, ideal for creating a border between several PropUi elements.}
 }
 \value{
 ui object list

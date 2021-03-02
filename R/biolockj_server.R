@@ -53,15 +53,21 @@ biolockj_server <- function(input, output, session){
         
         ## Use reactive objects as the single source of truth
         values <- reactiveValues(defaultProps=NA,
+                                 # The module run order. character vector. Values are the BioModule run line; 
+                                 # NOT NAMED.  Use sapply with aliasFromRunLine to stand-in for names
                                  moduleList=vector("character"), 
+                                 # Like moduleList, but these modules are in the "trash", not currently part of the pipeline.
+                                 # names may not be maintained
                                  removedModules=vector("character"),
-                                 customProps=list(), 
+                                 # named character vector of property values
+                                 customProps=vector("character"),
                                  ### IMPORTANT !
                                  # GET the property values through this object; the generalProps reactiveValues object
                                  # SET the property values through the input$[propName] object
                                  # an observeEvent ensures the flow of info from the input$ to the reactiveValues
                                  generalProps=initGenDefaults 
-                                 # moduleProperties=modulePerProp(initmoduleInfo)
+                                 # Very much like generalProps, just changes as modules are added/removed
+                                 # moduleProps=
         )
         
         defaults <- reactiveValues(
@@ -101,6 +107,86 @@ biolockj_server <- function(input, output, session){
             # map module short name to run line syntax
             getModuleRunLines(allModuleInfo())
         })
+        
+        propModules <- eventReactive( allModuleInfo(),{
+            modulePerProp( allModuleInfo() )
+        })
+        
+        modulePropInfo <- eventReactive(allModuleInfo(), {
+            # Properties in the override or owned section are always active inputs.
+            # --override props write to custom props; 
+            # --owned write to moduleProps
+            # Shared props are active ui, with special observers to keep all of them in sync
+            # --shared props write to module props
+            # Properties in general section are never active inputs, alwasy text output, 
+            # --general props reflect values stored in generalProps
+            # maybe with button to open that general props tab.
+            
+            # an object similar to BioLockR::moduleInfo(), BUT with a few differences
+            # - the names of the elements are modules alias, rather than the class names 
+            #   (thus, a single class may be represented many times)
+            # - Each element of $properties has additional elements: ownership and override
+            moduleClasses = sapply(values$moduleList, classFromRunline)
+            pipelineModules = allModuleInfo()[moduleClasses]
+            names(pipelineModules) = sapply(values$moduleList, aliasFromRunline) #TODO - make this an event reactive ?
+            applyPropOwnership(pipelineModules, names(genPropInfo()))
+        })
+        
+        #TODO: move to actions, or synchrony
+        observeSharedProps <- reactive({
+            # gather the shared properties
+            for (propName in names(propModules())){
+                modules = propModules()[[propName]]
+                if (propName %in% names(genPropInfo())){
+                    # message(propName, " is a general property, not a shared one.")
+                }else if( length(modules) > 1){
+                    types = sapply(allModuleInfo()[modules], function(x){
+                        x$properties[[propName]]$type
+                    })
+                    type = unique(unliest(types))
+                    if ( length(type) > 1){
+                        message("The property ", propName, " is a different type in two or more modules that use it. Therefore each module will have to use a module-specific override to set it.")
+                    }else{
+                        uiNames = module_prop_UI_name(propName, modules)
+                        for (uiName in uiNames){
+                            observeEvent(input[[uiName]],{
+                                newValue = input[[uiName]]
+                                values$moduleProps[[propName]] = newValue
+                                for (other in setdiff(uiNames, other)){
+                                    if (type=="boolean"){
+                                        updateRadioButtons(session, other, selected = newValue)
+                                    }else if(type=="numeric" || type == "integer"){
+                                        updateNumericInput(session, other, value = newValue)
+                                    }else if (type=="file path"){
+                                        updateTextInput(session, other, value = newValue)
+                                    }else if (type=="list of file paths"){
+                                        updateTextAreaInput(session, other, value = newValue)
+                                    }else{
+                                        updateTextInput(session, other, value = newValue)
+                                    }
+                                }
+                            })
+                        }
+                    }
+                    
+                }
+            }
+        })
+        
+        refreshSharedModPropObservers <- reactive({
+            
+        })
+        
+        # any property that is given by a module but that is NOT a general property
+        pipelineModuleProps <- reactiveVal()
+        # observe({
+        #     allModuleClasses = titleFromRunline(c( values$moduleList, values$removedModules))
+        #     allModuleProps = sapply(allModuleClasses, function(class){
+        #         names(allModuleInfo()[[class]]$properties)
+        #     })
+        #     moduleProps = unique(unlist( allModuleProps ) )
+        #     pipelineModuleProps( setdiff(moduleProps, names( genPropInfo() )) )
+        # })
 
         genPropInfo <- reactiveVal(initpropInfo)
         
@@ -211,7 +297,7 @@ biolockj_server <- function(input, output, session){
         output$selectModule <- renderUI({
             selectInput("AddBioModule",
                         "Select new BioModule", 
-                        names(allModuleInfo()), 
+                        names(moduleRunLines()), 
                         selected = "GenMod",
                         width = '100%')
         })
@@ -388,6 +474,87 @@ biolockj_server <- function(input, output, session){
         })
         
         output$modulePropsHeader <- renderText("The properties for a given module include the properties that are specific to that module, as well as any general properties that the module is known to reference.")
+        
+        # Properties - modules ####
+        
+        output$modProps <- renderUI({
+            message("Rendering ui for slot modProps...")
+            totalSteps = length( values$moduleList ) + 2
+            
+            
+            
+            if ( length(values$moduleList) >0 ) {
+                withProgress({
+                    modules = isolate(values$moduleList)
+                    names(modules) = sapply(modules, aliasFromRunline) #TODO: is this already like this?
+                    
+                    argsList =  lapply(as.list(names(modules)), function(moduleId){
+                        message("Building properties for module: ", moduleId)
+                        incProgress(1 / totalSteps)
+                        thisModule = modulePropInfo()[[moduleId]]
+                        props = thisModule$properties
+                        message("This module has ", length(props), " properties.")
+                        lastKeyProp = "cluster.jobHeader" #TODO make this dynamic
+                        midBorderFun = function(){return(tagList( hr(), h4("Other Properties") ))}
+                        standardBorderFun = function(){tagList( hr() )}
+                        tabPanel(moduleId,
+                                 # div(style = "height:400px;background-color: pink;",
+                                     fluidPage(
+                                         # style = "height:600px;background-color: #fee6ff;",
+                                         br(),
+                                         p("Module class: ", strong(classFromRunline(thisModule$usage) ), 
+                                           br(),
+                                           actionLink(paste0(classFromRunline(thisModule$usage), "userguide"), "view in user guide")), #TODO make this work
+                                         p("Module instance alias: ", strong(moduleId),
+                                           br(), 
+                                           actionLink(paste0(moduleId, "changeId"), "change")), #TODO make this work
+                                         h4("Key Properties"),
+                                         # First the overrides
+                                         lapply(props, function(propObj){
+                                             propName = propObj$override
+                                             message("Module property for module: ", moduleId, "; property: ", propName)
+                                             message(propName, ": has type: ", propObj$type)
+                                             propUI <- renderPropUi(propName,
+                                                                    propObj,
+                                                                    isolate(values$customProps[propName]),
+                                                                    isolate(defaults),
+                                                                    ownership="override",
+                                                                    trailingUiFun=ifelse(propObj$property==lastKeyProp, midBorderFun, standardBorderFun)
+                                                                    )
+                                             # observeEvent(input[[propUiName(propName)]],{
+                                             #     values$generalProps[propName] <- input[[propUiName(propName)]]
+                                             #     req(input$checkLiveFeedback)
+                                             #     req(genPropInfo()[[propName]]$type != "boolean")
+                                             #     shinyFeedback::hideFeedback( propUiName(propName) )
+                                             #     req(input[[propUiName(propName)]] != "")
+                                             #     isGood = isolate(BioLockR::isValidProp(propName, input[[propUiName(propName)]]))
+                                             #     message("isGood: ", isGood)
+                                             #     if (is.na(isGood)){
+                                             #         shinyFeedback::hideFeedback( propUiName(propName) )
+                                             #     }else if(isGood){
+                                             #         shinyFeedback::showFeedbackSuccess( propUiName(propName) )
+                                             #     }else{
+                                             #         shinyFeedback::showFeedbackWarning( propUiName(propName), "not good" )
+                                             #     }
+                                             # })
+                                             propUI
+                                         }),
+                                         p("end")  
+                                     )
+                                 # )
+                        )
+                    })
+                    incProgress(1 / totalSteps)
+                    # refreshFileChoosers()
+                    argsList$id = "modPropsTabSet"
+                    incProgress(1 / totalSteps)
+                    result = do.call(tabsetPanel, argsList)
+                }, message = "Rendering module properties...")
+            }else{
+                result="No modules."
+            }
+            result
+        })
         
         # Precheck
         
@@ -596,6 +763,7 @@ biolockj_server <- function(input, output, session){
             }, type="message")
             shinyFeedback::feedbackDanger("newAlias", !goodAlias, msg)
             req(goodAlias)
+            # names(runLine) = aliasFromRunline(runLine)
             values$moduleList <- c(isolate(input$orderModules), runLine)
             updateTextInput(session, "newAlias", value = "")
         })

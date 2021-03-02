@@ -15,11 +15,10 @@ buildFileListPropObservers(
   output,
   propName,
   myVolumesNow,
-  values,
-  fileListUpdates
+  values
 )
 
-buildFileListPropUI(propName, value)
+buildFileListPropUI(propName, value, default)
 
 buildFilePathPropObservers(
   session,
@@ -30,7 +29,7 @@ buildFilePathPropObservers(
   values
 )
 
-buildFilePathPropUI(propName)
+buildFilePathPropUI(propName, value, default)
 }
 \arguments{
 \item{session}{usually session=session}
@@ -44,8 +43,6 @@ buildFilePathPropUI(propName)
 \item{myVolumesNow}{the volumes object to pass to shinyFiles operations}
 
 \item{values}{the list of lists reactive values object that represents the current configuration}
-
-\item{fileListUpdates}{a reactive values object that keeps the file list options per property}
 
 \item{value}{in the case of a list property, the value of the property, most likely a single string, possibly comma-separated list}
 }

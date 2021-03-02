@@ -9,14 +9,20 @@
 #' @param default the current default value
 #' @param value the current value
 #' @param defaults the list of lists of representation of defaults
+#' @param ownership the ownership category for the proprety, one of c("general", "shared", "owned", "override")
+#' @param moduleId if ownership is not "general", which module is the ownership referenceing
+#' @param trailingUI ui element (or tagList of elements) added to the end of the returned property UI, ideal for creating a border between several PropUi elements.
+#' @param trailingUiFun a function that takes no args and returns a tagList object
 #'
 #' @return ui object list
 #' 
 # render general prop ui ####
-renderPropUi <- function(propName, prop, value, defaults){
-    # message("Treating property ", propName, " as a ", prop$type, " property.")
+renderPropUi <- function(propName, prop, value, defaults, ownership="general", moduleId=NULL, trailingUiFun=function(){tagList(hr())} ){
+    if (ownership=="override") message("Treating property ", propName, " as a ", prop$type, " property.")
     uiName = propUiName(propName)
     default = defaults$values[propName]
+    if ( !BioLockR::isReadableValue(prop$type) ) prop$type = "string" # this is a stop gap.  All properties **should have $type; see sheepdog_testing_suite issue #318
+    if ( !BioLockR::isReadableValue(prop$description) ) prop$description = "a property" # this is a stop gap.  All properties **should have $description
     if(prop$type == "boolean"){
         selected = ""
         if ( BioLockR::isReadableValue(value) ){
@@ -54,12 +60,33 @@ renderPropUi <- function(propName, prop, value, defaults){
                               width = '100%')
     }
     
+    if (ownership=="shared" || ownership=="owned"){
+        overrideProp = module_override_prop(propName, moduleId)
+        overridOpt <- tagList(
+            shinyBS::popify(actionButton( propOverrideBtnId(prop$property, moduleId), "create override"), 
+                            title = overrideProp,
+                            content = paste0("If the property \"", overrideProp, "\" is present, then its value will be used in place of the value of property \"", propName, "\" but ONLY this module instance."))
+        )
+    }else if (ownership=="override"){
+        overridOpt <- tagList(
+            actionLink( propRmOverrideBtnId(prop$property, moduleId), "remove override"), 
+            paste0("to resume using: ", prop$property)
+        )
+    }else{
+        overridOpt <- tagList()
+    }
+    
+    trailingUI = trailingUiFun()
+    message("trailingUI has length: ", length(trailingUI))
+    message("trailingUI looks like this: ", trailingUI)
+    
     if (is.null(default)){
         propUI <- tagList(
             em(prop$type),
             renderText(prop$description),
             inputObj,
-            hr())
+            overridOpt,
+            unlist(trailingUI))
     }else{
         content = "<b>source of default value</b>"
         content = c(content, paste("standard default:", defaults$defaultPropsList$standard[propName]))
@@ -80,7 +107,8 @@ renderPropUi <- function(propName, prop, value, defaults){
             em(prop$type),
             renderText(prop$description),
             inputObj,
-            hr())
+            overridOpt,
+            trailingUI)
     }
     
     return(propUI)
