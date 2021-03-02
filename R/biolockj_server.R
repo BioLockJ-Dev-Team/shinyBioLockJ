@@ -129,7 +129,7 @@ biolockj_server <- function(input, output, session){
             moduleClasses = sapply(values$moduleList, classFromRunline)
             pipelineModules = allModuleInfo()[moduleClasses]
             names(pipelineModules) = sapply(values$moduleList, aliasFromRunline) #TODO - make this an event reactive ?
-            applyPropOwnership(pipelineModules, names(genPropInfo()))
+            applyPropOwnership(pipelineModules, genPropInfo() )
         })
         
         #TODO: move to actions, or synchrony
@@ -494,8 +494,12 @@ biolockj_server <- function(input, output, session){
                         thisModule = modulePropInfo()[[moduleId]]
                         props = thisModule$properties
                         message("This module has ", length(props), " properties.")
-                        lastKeyProp = "cluster.jobHeader" #TODO make this dynamic
-                        midBorderFun = function(){return(tagList( hr(), h4("Other Properties") ))}
+                        lastKeyPropName = Find(f=function(p){p$isKey}, x=thisModule$properties, right=TRUE)$property
+                        message("Determined the last key prop to be named: ", lastKeyPropName)
+                        midBorderFun = function(){return(tagList( br(), br(), h3("Other Properties"), 
+                                                                  em("General properties that apply to this module.  "),
+                                                                  em("In some cases it is beneficial to override one or more of these to give specific values to use for just this module."), 
+                                                                  br(), br() ))}
                         standardBorderFun = function(){tagList( hr() )}
                         tabPanel(moduleId,
                                  # div(style = "height:400px;background-color: pink;",
@@ -508,8 +512,7 @@ biolockj_server <- function(input, output, session){
                                          p("Module instance alias: ", strong(moduleId),
                                            br(), 
                                            actionLink(paste0(moduleId, "changeId"), "change")), #TODO make this work
-                                         h4("Key Properties"),
-                                         # First the overrides
+                                         h3("Key Properties"),
                                          lapply(props, function(propObj){
                                              propName = propObj$override
                                              message("Module property for module: ", moduleId, "; property: ", propName)
@@ -519,7 +522,7 @@ biolockj_server <- function(input, output, session){
                                                                     isolate(values$customProps[propName]),
                                                                     isolate(defaults),
                                                                     ownership="override",
-                                                                    trailingUiFun=ifelse(propObj$property==lastKeyProp, midBorderFun, standardBorderFun)
+                                                                    trailingUiFun=ifelse(propObj$property==lastKeyPropName, midBorderFun, standardBorderFun)
                                                                     )
                                              # observeEvent(input[[propUiName(propName)]],{
                                              #     values$generalProps[propName] <- input[[propUiName(propName)]]
