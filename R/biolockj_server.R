@@ -329,6 +329,7 @@ biolockj_server <- function(input, output, session){
                     incProgress(1 / totalSteps)
                     group = groupedProps()[[groupName]]
                     tabPanel(groupName,
+                             div(style = "height:1000px; overflow-y: scroll", 
                              p(paste("See the user guide for more info about", groupName, "properties.", collaps=" ")),
                              lapply(group, function(propName){
                                  propUI <- renderPropUi(propName, 
@@ -352,8 +353,8 @@ biolockj_server <- function(input, output, session){
                                      }
                                  })
                                  propUI
-                             }))
-                })
+                             })))
+                }) 
                 incProgress(1 / totalSteps)
                 refreshFileChoosers()
                 argsList$selected = "input"
@@ -502,7 +503,8 @@ biolockj_server <- function(input, output, session){
                                                                   br(), br() ))}
                         standardBorderFun = function(){tagList( hr() )}
                         tabPanel(moduleId,
-                                 # div(style = "height:400px;background-color: pink;",
+                                 div(style = "height:1000px; overflow-y: scroll",
+                                 # div(style = "position: relative; bottom: 5px; height: auto; background-color: pink; overflow-y: scroll; top: 5px;", #height:500px; top: 300px; 
                                      fluidPage(
                                          # style = "height:600px;background-color: #fee6ff;",
                                          br(),
@@ -544,7 +546,7 @@ biolockj_server <- function(input, output, session){
                                          }),
                                          p("end")  
                                      )
-                                 # )
+                                 )
                         )
                     })
                     incProgress(1 / totalSteps)
