@@ -4,15 +4,15 @@
 \alias{applyPropOwnership}
 \title{Title}
 \usage{
-applyPropOwnership(modules, genProps)
+applyPropOwnership(modules, genPropInfo = BioLockR::propInfo())
 }
 \arguments{
 \item{modules}{list of module info, elements should be named, generally similar what is returned by BioLockR::moduleInfo()}
 
-\item{genProps}{vector of general property names}
+\item{genPropInfo}{list of property info object, similar to what is returned by BioLockR::propInfo()}
 }
 \value{
-a list similar to \emph{modules}, but where the properties objects have added elements "override" and "ownership";
+a list similar to \emph{modules}, but where the properties objects have added elements "override", "isKey", and "ownership";
 override is the module-specific override property for this this module and property and
 ownership is one of "general", "shared", or "single"
 }

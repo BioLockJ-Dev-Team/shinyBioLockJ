@@ -37,6 +37,9 @@ renderPropUi(
 ui object list
 }
 \description{
+Create the ui for an individual biolockj property.
+}
+\details{
 As of this writing, the Properties class in BioLockJ has these KNOWN_TYPES:
 KNOWN_TYPES = {STRING_TYPE, BOOLEAN_TYPE, FILE_PATH, EXE_PATH, LIST_TYPE, FILE_PATH_LIST, INTEGER_TYPE, NUMERTIC_TYPE};
 KNOWN_TYPES = {"string", "boolean", "file path", "executable", "list", "list of file paths", "integer", "numeric"};
