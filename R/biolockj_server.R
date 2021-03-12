@@ -515,7 +515,7 @@ biolockj_server <- function(input, output, session){
                                          br(),
                                          p("Module class: ", strong(classFromRunline(thisModule$usage) ), 
                                            br(),
-                                           actionLink(paste0(classFromRunline(thisModule$usage), "userguide"), "view in user guide")), #TODO make this work
+                                           a("view in user guide", href=module_userguide_url(classFromRunline(thisModule$usage))) ),
                                          p("Module instance alias: ", strong(moduleId),
                                            br(), 
                                            actionLink(paste0(moduleId, "changeId"), "change")), #TODO make this work
