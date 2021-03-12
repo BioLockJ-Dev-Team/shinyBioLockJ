@@ -10,7 +10,12 @@ biolockj_ui <- function(){
     ui <-  fluidPage( 
         shinyFeedback::useShinyFeedback(),
         shinyjs::useShinyjs(),
-        navbarPage(id = "topTabs",
+        tags$script('
+      Shiny.addCustomMessageHandler("refocus",
+            function(e_id) {
+            document.getElementById(e_id).focus();
+                                  });'),
+        div(style="padding-left: 0px; padding-right: 0px;", navbarPage(id = "topTabs",
             position = "fixed-top",
             theme = shinythemes::shinytheme("cerulean"),
             "BioLockJ",
@@ -82,9 +87,9 @@ biolockj_ui <- function(){
                          actionButton("emptyModuleTrash", "Empty Trash"))),
             # Properties ####
             tabPanel("Properties",
-                     splitLayout(
-                         cellArgs = list(style='white-space: normal;'),
-                         fluidPage(p("navbar"),p("spacer"),
+                     div(style="", splitLayout(
+                         cellArgs = list(style='white-space: normal; padding-left: 0px; padding-right: 0px;'),
+                         tagList(p("navbar"),p("spacer"),
                                    h2("General Properties"),
                                    checkboxInput("checkLiveFeedback", "show live feedback", value=FALSE),
                                    p("General properties are not specific to any one module."),
@@ -107,12 +112,12 @@ biolockj_ui <- function(){
                                                 em("These are not included as part of the current config file."),
                                                 uiOutput("showDefaultCustomProps"))
                                    )),
-                         fluidPage(p("navbar"),p("spacer"),
+                         tagList(p("navbar"),p("spacer"),
                                    h2("Module Properties"),
                                    textOutput("modulePropsHeader"),
                                    uiOutput("modProps")
                                    )
-                     )),
+                     ))),
             # Precheck ####
             tabPanel("Precheck",
                      p("navbar"),p("spacer"),
@@ -202,7 +207,7 @@ biolockj_ui <- function(){
             tabPanel("Help",
                      p("navbar"),p("spacer"),
                      includeMarkdown(helpMdFile))
-        )
+        ))
     ) # end of UI ####
     return(ui)
 }

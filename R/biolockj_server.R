@@ -6,6 +6,10 @@
 #'
 #' @return server function
 #'
+#
+#  PLEASE NOTE: this document makes use of code-folding separators.  
+#  Any line that matches: "# * #### *" can be used to 'fold' the code.
+#
 biolockj_server <- function(input, output, session){
     
     envType = detect_deployment()
@@ -361,6 +365,7 @@ biolockj_server <- function(input, output, session){
                 argsList$id = "genPropsTabSet"
                 incProgress(1 / totalSteps)
                 result = do.call(tabsetPanel, argsList)
+                div(style="padding-left: 5px; padding-right: 0px;", result)
             }, message = "Rendering general properties...")
             result
         })
@@ -503,8 +508,8 @@ biolockj_server <- function(input, output, session){
                                                                   br(), br() ))}
                         standardBorderFun = function(){tagList( hr() )}
                         tabPanel(moduleId,
-                                 div(style = "height:1000px; overflow-y: scroll",
-                                 # div(style = "position: relative; bottom: 5px; height: auto; background-color: pink; overflow-y: scroll; top: 5px;", #height:500px; top: 300px; 
+                                 div(style = "height:1300px; overflow-y: scroll; padding-left: 0px; padding-right: 10px", 
+                                     # div(style = "position: relative; bottom: 5px; height: auto; background-color: #D7FCF9; overflow-y: scroll; top: 5px;", #height:500px; top: 300px; 
                                      fluidPage(
                                          # style = "height:600px;background-color: #fee6ff;",
                                          br(),
@@ -515,17 +520,44 @@ biolockj_server <- function(input, output, session){
                                            br(), 
                                            actionLink(paste0(moduleId, "changeId"), "change")), #TODO make this work
                                          h3("Key Properties"),
-                                         lapply(props, function(propObj){
-                                             propName = propObj$override
-                                             message("Module property for module: ", moduleId, "; property: ", propName)
-                                             message(propName, ": has type: ", propObj$type)
-                                             propUI <- renderPropUi(propName,
-                                                                    propObj,
-                                                                    isolate(values$customProps[propName]),
-                                                                    isolate(defaults),
-                                                                    ownership="override",
-                                                                    trailingUiFun=ifelse(propObj$property==lastKeyPropName, midBorderFun, standardBorderFun)
-                                                                    )
+                                         lapply(props, function(prop){
+                                             propName = prop$property
+                                             message("Module property for module: ", moduleId, "; property: ", prop$property)
+                                             message(prop$property, ": has type: ", prop$type)
+                                             propUI <- tabsetPanel(
+                                                 id=propModuleFlipPanel(propName, moduleId), type = "hidden",
+                                                 tabPanelBody("displayOnly", 
+                                                              renderPropUi(prop$property,
+                                                                           prop,
+                                                                           isolate(values$generalProps[prop$property]),
+                                                                           isolate(defaults),
+                                                                           ownership=prop$ownership,
+                                                                           moduleId = moduleId,
+                                                                           trailingUiFun=ifelse(prop$property==lastKeyPropName, midBorderFun, standardBorderFun)
+                                                              )
+                                                 ),
+                                                 tabPanelBody("activeUi", 
+                                                              renderPropUi(prop$override,
+                                                                           prop,
+                                                                           isolate(values$customProps[prop$override]),
+                                                                           isolate(defaults),
+                                                                           ownership="override",
+                                                                           moduleId = moduleId,
+                                                                           trailingUiFun=ifelse(prop$property==lastKeyPropName, midBorderFun, standardBorderFun)
+                                                              )
+                                                 )
+                                             )
+                                             
+                                             
+                                             # propUI <- renderPropUi(propName,
+                                             #                        prop,
+                                             #                        isolate(values$customProps[propName]),
+                                             #                        isolate(defaults),
+                                             #                        ownership="override",
+                                             #                        trailingUiFun=ifelse(prop$property==lastKeyPropName, midBorderFun, standardBorderFun)
+                                             #                        )
+                                             
+                                             
                                              # observeEvent(input[[propUiName(propName)]],{
                                              #     values$generalProps[propName] <- input[[propUiName(propName)]]
                                              #     req(input$checkLiveFeedback)
@@ -542,9 +574,41 @@ biolockj_server <- function(input, output, session){
                                              #         shinyFeedback::showFeedbackWarning( propUiName(propName), "not good" )
                                              #     }
                                              # })
+                                             
+                                             if (prop$ownership == "general"){
+                                                 propCategory = unlist(strsplit(prop$property, split = ".", fixed = TRUE))[1]
+                                                 observeEvent(input[[propEditBtnId(propName, moduleId)]], {
+                                                     message("The button was pushed! Button ", propEditBtnId(propName, moduleId))
+                                                     message("Set the general props tab to category: ", propCategory)
+                                                     updateTabsetPanel(session=session, "genPropsTabSet", selected = propCategory)
+                                                     # thanks to sinterworp for their post here: https://www.reddit.com/r/rstats/comments/7fmkah/moving_focus_to_next_input_in_shiny/
+                                                     session$sendCustomMessage("refocus",list(propUiName(propName)))
+                                                 })
+                                                 observeEvent(input[[propUiName(propName)]], {
+                                                     value = input[[propUiName(propName)]]
+                                                     default = defaults$values[propName]
+                                                     if(BioLockR::isReadableValue(value)){
+                                                         u = renderUI(p(strong(propName), "=", value ))
+                                                     }else if(BioLockR::isReadableValue(default)){
+                                                         u = renderUI(p(strong(propName), "=", em(default, style="color: gray;") ))
+                                                     }else{
+                                                         u = renderUI(p(strong(propName), em("has no value", style="color: gray;") ))
+                                                     }
+                                                     output[[propShowId(prop$property, moduleId)]] = u
+                                                 })
+                                             }
+                                             
+                                             observeEvent(input[[propOverrideBtnId(propName, moduleId)]], {
+                                                 message("The button was pushed! Button ", propOverrideBtnId(propName, moduleId))
+                                                 updateTabsetPanel(session=session, propModuleFlipPanel(propName, moduleId), selected = "activeUi")
+                                             })
+                                             observeEvent(input[[propRmOverrideBtnId(propName, moduleId)]], {
+                                                 message("The button was pushed! Button ", propRmOverrideBtnId(propName, moduleId))
+                                                 updateTabsetPanel(session=session, propModuleFlipPanel(propName, moduleId), selected = "displayOnly")
+                                             })
                                              propUI
                                          }),
-                                         p("end")  
+                                         p("end")
                                      )
                                  )
                         )

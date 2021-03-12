@@ -3,5 +3,5 @@
 #' @param module the module alias
 #'
 propOverrideBtnId <- function(propName, module){
-    paste0(module, propUiName(propName), "overrideBtn")
+    paste0(module, propUiName(propName), "OverrideBtn")
 }
