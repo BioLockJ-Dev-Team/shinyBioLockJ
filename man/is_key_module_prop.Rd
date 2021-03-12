@@ -7,9 +7,9 @@
 is_key_module_prop(prop, genPropInfo = BioLockR::propInfo())
 }
 \arguments{
-\item{prop}{}
+\item{prop}{a property object, an element from the list returned by BioLockR::propInfo()}
 
-\item{genPropInfo}{}
+\item{genPropInfo}{the result of BioLockR::propInfo(), or similar}
 }
 \value{
 boolean

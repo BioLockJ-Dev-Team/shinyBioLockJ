@@ -28,10 +28,6 @@ renderPropUi(
 \item{moduleId}{if ownership is not "general", which module is the ownership referenceing}
 
 \item{trailingUiFun}{a function that takes no args and returns a tagList object}
-
-\item{default}{the current default value}
-
-\item{trailingUI}{ui element (or tagList of elements) added to the end of the returned property UI, ideal for creating a border between several PropUi elements.}
 }
 \value{
 ui object list

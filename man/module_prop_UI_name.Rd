@@ -8,6 +8,8 @@ module_prop_UI_name(propName, module)
 }
 \arguments{
 \item{propName}{the name of a BioLockJ property, such as "script.numThreads"}
+
+\item{module}{the module id}
 }
 \value{
 a string to use for an associated UI element

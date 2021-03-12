@@ -4,8 +4,8 @@
 #' A property is a "key" property for a given module if the property is not also a general property OR
 #' if the description is different from the general property description.
 #'
-#' @param prop 
-#' @param genPropInfo 
+#' @param prop a property object, an element from the list returned by BioLockR::propInfo()
+#' @param genPropInfo the result of BioLockR::propInfo(), or similar
 #'
 #' @return boolean
 #'

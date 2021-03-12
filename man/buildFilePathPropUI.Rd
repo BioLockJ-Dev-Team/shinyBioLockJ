@@ -45,6 +45,8 @@ buildFilePathPropUI(propName, value, default)
 \item{values}{the list of lists reactive values object that represents the current configuration}
 
 \item{value}{in the case of a list property, the value of the property, most likely a single string, possibly comma-separated list}
+
+\item{default}{value shown as a placeholder if no value is present, or value is removed}
 }
 \value{
 

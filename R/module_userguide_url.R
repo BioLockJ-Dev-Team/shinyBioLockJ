@@ -5,8 +5,6 @@
 #'
 #' @return url as a string
 #'
-#' @examples
-#' module_userguide_url("biolockj.module.diy.GenMod")
 module_userguide_url <-function(class, baseUrl="https://biolockj-dev-team.github.io/BioLockJ/GENERATED/"){
     parts = unlist(strsplit(trimws(class), ".", fixed=TRUE))
     last = length(parts)

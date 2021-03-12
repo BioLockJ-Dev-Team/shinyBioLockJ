@@ -1,4 +1,4 @@
-test_that("multiplication works", {
+test_that("gets correct name", {
     line = "#BioModule path.to.class.for.Dostuff AS MyStuff"
     expect_equivalent( classFromRunline( line ), "path.to.class.for.Dostuff")
     

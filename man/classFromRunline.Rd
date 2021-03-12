@@ -15,12 +15,6 @@ the class of the module specified by the runline
 \description{
 Derive the module class from a given runline
 }
-\examples{
-line = "#BioModule path.to.class.for.Dostuff AS MyStuff"
-classFromRunline( line )
-#> "path.to.class.for.Dostuff"
-
-}
 \seealso{
 aliasFromRunline
 }

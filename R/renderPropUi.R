@@ -9,12 +9,11 @@
 #'  
 #' @param propName a property name, such script.numThreads
 #' @param prop a property object, which is a list that contains type, description, etc
-#' @param default the current default value
+#' @param defaults the current default value
 #' @param value the current value
 #' @param defaults the list of lists of representation of defaults
 #' @param ownership the ownership category for the proprety, one of c("general", "shared", "owned", "override")
 #' @param moduleId if ownership is not "general", which module is the ownership referenceing
-#' @param trailingUI ui element (or tagList of elements) added to the end of the returned property UI, ideal for creating a border between several PropUi elements.
 #' @param trailingUiFun a function that takes no args and returns a tagList object
 #'
 #' @return ui object list

@@ -3,6 +3,7 @@
 #' 
 #' @param propName a string, the name of the property
 #' @param value in the case of a list property, the value of the property, most likely a single string, possibly comma-separated list
+#' @param default value shown as a placeholder if no value is present, or value is removed
 #'
 buildFileListPropUI <- function(propName, value, default){
     tagList(
