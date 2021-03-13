@@ -1,6 +1,7 @@
 #' Title
 #'
-#' @param modules list of module info, elements should be named, generally similar what is returned by BioLockR::moduleInfo()
+#' @param modules list of module info, elements should be named, generally similar what is returned by BioLockR::moduleInfo(), elements must be named using their alias within the pipeline.
+#' @param sharedModuleProps a vector of properties that are used by more than one module (should not include general properties)
 #' @param genPropInfo list of property info object, similar to what is returned by BioLockR::propInfo()
 #'
 #' @return 
@@ -9,12 +10,7 @@
 #' ownership is one of "general", "shared", or "single"
 #'
 #' @examples
-applyPropOwnership <- function( modules, genPropInfo=BioLockR::propInfo()){
-    
-    modsPerProp = modulePerProp(modules)
-    numMods = sapply(modsPerProp, length)
-    multiModule = modsPerProp[which(numMods >1)]
-
+applyPropOwnership <- function( modules, sharedModuleProps, genPropInfo=BioLockR::propInfo()){
     new = lapply(names(modules), function(alias){
         mod = modules[[alias]]
         #
@@ -24,7 +20,7 @@ applyPropOwnership <- function( modules, genPropInfo=BioLockR::propInfo()){
             propObj$override = module_override_prop(propName, alias)
             if (propName %in% names(genPropInfo)){
                 propObj$ownership = "general"
-            }else if (propName %in% multiModule){
+            }else if (propName %in% sharedModuleProps){
                 propObj$ownership = "shared"
             }else{
                 propObj$ownership = "single"

@@ -21,7 +21,11 @@
 # render general prop ui ####
 renderPropUi <- function(propName, prop, value, defaults, ownership="general", moduleId=NULL, trailingUiFun=function(){tagList(hr())} ){
     if (ownership=="override") message("Treating property ", propName, " as a ", prop$type, " property.")
-    uiName = propUiName(propName)
+    if (is.null(moduleId)){
+        uiName = propUiName(propName)
+    }else{
+        uiName = module_prop_UI_name(propName, moduleId)
+    }
     default = defaults$values[propName]
     if ( !BioLockR::isReadableValue(prop$type) ) prop$type = "string" # this is a stop gap.  All properties **should have $type; see sheepdog_testing_suite issue #318
     if ( !BioLockR::isReadableValue(prop$description) ) prop$description = "a property" # this is a stop gap.  All properties **should have $description
@@ -118,9 +122,9 @@ renderPropUi <- function(propName, prop, value, defaults, ownership="general", m
         
         propUI <- tagList(
             shinyBS::popify(
-                actionLink(propInfoId(propName), "", icon = icon("angle-double-left")),
+                actionLink(propInfoId(uiName), "", icon = icon("angle-double-left")),
                 title=paste0("<b>", propName, " = ",  defaults$values[propName], "</b>"),
-                paste0(content, collapse = "<br>"),#content=paste("default:", defaults$values[[propName]]),
+                paste0(content, collapse = "<br>"),
                 trigger = c('hover','click'), placement='right'),
             em(prop$type),
             renderText(prop$description),

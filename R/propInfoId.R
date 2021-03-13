@@ -1,6 +1,9 @@
-#' 
-#' @describeIn propUiName
+#' Title
 #'
-propInfoId <- function(propName){
-    paste0(gsub(".", "", propName, fixed=TRUE), "Info")
+#' @param propUiName often the output of propUiName or module_prop_UI_name
+#'
+#' @return an id
+#'
+propInfoId <- function(propUiName){
+    paste0(propUiName, "Info")
 }

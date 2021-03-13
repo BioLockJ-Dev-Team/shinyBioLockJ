@@ -69,9 +69,9 @@ biolockj_server <- function(input, output, session){
                                  # GET the property values through this object; the generalProps reactiveValues object
                                  # SET the property values through the input$[propName] object
                                  # an observeEvent ensures the flow of info from the input$ to the reactiveValues
-                                 generalProps=initGenDefaults 
+                                 generalProps=initGenDefaults, 
                                  # Very much like generalProps, just changes as modules are added/removed
-                                 # moduleProps=
+                                 moduleProps=vector("character")
         )
         
         defaults <- reactiveValues(
@@ -112,35 +112,49 @@ biolockj_server <- function(input, output, session){
             getModuleRunLines(allModuleInfo())
         })
         
-        propModules <- eventReactive( allModuleInfo(),{
-            modulePerProp( allModuleInfo() )
+        pipelineModsPerProp <- eventReactive( list(allModuleInfo(), values$moduleList),{
+            moduleClasses = unlist(sapply(values$moduleList, classFromRunline))
+            modulePerProp( allModuleInfo()[moduleClasses] )
         })
         
-        modulePropInfo <- eventReactive(allModuleInfo(), {
-            # Properties in the override or owned section are always active inputs.
-            # --override props write to custom props; 
-            # --owned write to moduleProps
-            # Shared props are active ui, with special observers to keep all of them in sync
-            # --shared props write to module props
-            # Properties in general section are never active inputs, alwasy text output, 
-            # --general props reflect values stored in generalProps
-            # maybe with button to open that general props tab.
-            
+        pipelineModuleInfo <- eventReactive( list(allModuleInfo(), values$moduleList), {
             # an object similar to BioLockR::moduleInfo(), BUT with a few differences
             # - the names of the elements are modules alias, rather than the class names 
             #   (thus, a single class may be represented many times)
             # - Each element of $properties has additional elements: ownership and override
-            moduleClasses = sapply(values$moduleList, classFromRunline)
-            pipelineModules = allModuleInfo()[moduleClasses]
-            names(pipelineModules) = sapply(values$moduleList, aliasFromRunline) #TODO - make this an event reactive ?
-            applyPropOwnership(pipelineModules, genPropInfo() )
+            #   Properties in the override or owned section are always active inputs.
+            #   --override props write to custom props; 
+            #   --owned write to moduleProps
+            #   Shared props are active ui, with special observers to keep all of them in sync
+            #   --shared props write to module props
+            #   Properties in general section are never active inputs, alwasy text output, 
+            #   --general props reflect values stored in generalProps
+            if ( BioLockR::hasReadableValue(values$moduleList)){
+                moduleClasses = unlist(sapply(values$moduleList, classFromRunline))
+                pipelineModules = allModuleInfo()[moduleClasses]
+                names(pipelineModules) = sapply(values$moduleList, aliasFromRunline)
+                applyPropOwnership(pipelineModules, sharedModuleProps(), genPropInfo() )
+            }else{
+                list()
+            }
+        })
+        
+        sharedModuleProps <- eventReactive(pipelineModsPerProp(), {
+            if ( BioLockR::hasReadableValue(pipelineModsPerProp())){
+                isShared = sapply(pipelineModsPerProp(), function(usedby){length(usedby)>1})
+                multimoduleProps = names(pipelineModsPerProp())[isShared]
+                shared = setdiff(multimoduleProps, names(values$generalProps))
+                shared
+            }else{
+                vector("character")
+            }
         })
         
         #TODO: move to actions, or synchrony
         observeSharedProps <- reactive({
             # gather the shared properties
-            for (propName in names(propModules())){
-                modules = propModules()[[propName]]
+            for (propName in names(pipelineModsPerProp())){
+                modules = pipelineModsPerProp()[[propName]]
                 if (propName %in% names(genPropInfo())){
                     # message(propName, " is a general property, not a shared one.")
                 }else if( length(modules) > 1){
@@ -180,17 +194,6 @@ biolockj_server <- function(input, output, session){
         refreshSharedModPropObservers <- reactive({
             
         })
-        
-        # any property that is given by a module but that is NOT a general property
-        pipelineModuleProps <- reactiveVal()
-        # observe({
-        #     allModuleClasses = titleFromRunline(c( values$moduleList, values$removedModules))
-        #     allModuleProps = sapply(allModuleClasses, function(class){
-        #         names(allModuleInfo()[[class]]$properties)
-        #     })
-        #     moduleProps = unique(unlist( allModuleProps ) )
-        #     pipelineModuleProps( setdiff(moduleProps, names( genPropInfo() )) )
-        # })
 
         genPropInfo <- reactiveVal(initpropInfo)
         
@@ -497,7 +500,7 @@ biolockj_server <- function(input, output, session){
                     argsList =  lapply(as.list(names(modules)), function(moduleId){
                         message("Building properties for module: ", moduleId)
                         incProgress(1 / totalSteps)
-                        thisModule = modulePropInfo()[[moduleId]]
+                        thisModule = pipelineModuleInfo()[[moduleId]]
                         props = thisModule$properties
                         message("This module has ", length(props), " properties.")
                         lastKeyPropName = Find(f=function(p){p$isKey}, x=thisModule$properties, right=TRUE)$property
@@ -518,7 +521,8 @@ biolockj_server <- function(input, output, session){
                                            a("view in user guide", href=module_userguide_url(classFromRunline(thisModule$usage))) ),
                                          p("Module instance alias: ", strong(moduleId),
                                            br(), 
-                                           actionLink(paste0(moduleId, "changeId"), "change")), #TODO make this work
+                                           #actionLink(paste0(moduleId, "changeId"), "change")  #TODO make this work
+                                           ), 
                                          h3("Key Properties"),
                                          lapply(props, function(prop){
                                              propName = prop$property
@@ -597,7 +601,9 @@ biolockj_server <- function(input, output, session){
                                                      output[[propShowId(prop$property, moduleId)]] = u
                                                  })
                                              }
-                                             
+                                             if (BioLockR::isReadableValue(isolate(values$customProps[prop$override]))){
+                                                 updateTabsetPanel(session=session, propModuleFlipPanel(propName, moduleId), selected = "activeUi")
+                                             }
                                              observeEvent(input[[propOverrideBtnId(propName, moduleId)]], {
                                                  message("The button was pushed! Button ", propOverrideBtnId(propName, moduleId))
                                                  updateTabsetPanel(session=session, propModuleFlipPanel(propName, moduleId), selected = "activeUi")
@@ -605,6 +611,7 @@ biolockj_server <- function(input, output, session){
                                              observeEvent(input[[propRmOverrideBtnId(propName, moduleId)]], {
                                                  message("The button was pushed! Button ", propRmOverrideBtnId(propName, moduleId))
                                                  updateTabsetPanel(session=session, propModuleFlipPanel(propName, moduleId), selected = "displayOnly")
+                                                 values$customProps[prop$override] <- "" #TODO - see if NULL or NA or something different is better
                                              })
                                              propUI
                                          }),
@@ -1323,6 +1330,7 @@ biolockj_server <- function(input, output, session){
             removeModal()
         })
         
+        # Actions - configLines ####
         configLines <- reactive({
             lines = vector("character")
             if (input$include_biolockj_version){
@@ -1351,12 +1359,40 @@ biolockj_server <- function(input, output, session){
                     }
                 }
             }
+            if ( length(sharedModuleProps() > 0) && BioLockR::hasReadableValue(values$modProps[sharedModuleProps()]) ){
+                lines = c(lines, "", "# Shared module properties")
+                for( p in sharedModuleProps() ){
+                    value = values$modProps[p]
+                    if ( doIncludeProp(p, value, default=defaults$values[p], input=input) ){
+                        type = pipelineModuleInfo()[[pipelineModsPerProp()[1]]]$properties[[p]]$type
+                        line = writeConfigProp(p, value, type, projectDirPath(), input$checkRelPaths)
+                        lines = c(lines, line)
+                    }
+                }
+            }
             for (runline in values$moduleList){
                 al = aliasFromRunline(runline)
-                alsProps = list()
+                alsProps = pipelineModuleInfo()[[al]]$properties
                 if ( length(alsProps) > 0 ){
                     lines = c(lines, "", paste("#", al))
-                    # TODO - add module props, module override props for this module
+                    for (prop in alsProps){
+                        p = prop$property
+                        if (BioLockR::isReadableValue(values$customProps[prop$override])){
+                            value = values$customProps[prop$override]
+                            if ( doIncludeProp(p, value, default=defaults$values[p], input=input) ){
+                                line = writeConfigProp(p, value, prop$type, projectDirPath(), input$checkRelPaths)
+                                lines = c(lines, line)
+                            }
+                        }else if(p %in% names(values$generalProps)){
+                            # message("already wrote property: ", prop$property)
+                        }else{
+                            value = values$modProps[p]
+                            if ( doIncludeProp(p, value, default=defaults$values[p], input=input) ){
+                                line = writeConfigProp(p, value, prop$type, projectDirPath(), input$checkRelPaths)
+                                lines = c(lines, line)
+                            }
+                        }
+                    }
                 }
             }
             if (input$include_mid_progress){
