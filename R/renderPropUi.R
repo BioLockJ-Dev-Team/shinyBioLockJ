@@ -10,7 +10,7 @@
 #' @param propName a property name, such script.numThreads
 #' @param prop a property object, which is a list that contains type, description, etc
 #' @param defaults the current default value
-#' @param value the current value
+#' @param value a string, the current value
 #' @param defaults the list of lists of representation of defaults
 #' @param ownership the ownership category for the proprety, one of c("general", "shared", "owned", "override")
 #' @param moduleId if ownership is not "general", which module is the ownership referenceing
@@ -19,22 +19,24 @@
 #' @return ui object list
 #' 
 # render general prop ui ####
-renderPropUi <- function(propName, prop, value, defaults, ownership="general", moduleId=NULL, trailingUiFun=function(){tagList(hr())} ){
-    if (ownership=="override") message("Treating property ", propName, " as a ", prop$type, " property.")
+renderPropUi <- function(propName, prop, value="", defaults, ownership="general", moduleId=NULL, trailingUiFun=function(){tagList(hr())} ){
+    # if (ownership=="override") message("Treating property ", propName, " as a ", prop$type, " property.")
     if (is.null(moduleId)){
         uiName = propUiName(propName)
     }else{
         uiName = module_prop_UI_name(propName, moduleId)
     }
     default = defaults$values[propName]
-    if ( !BioLockR::isReadableValue(prop$type) ) prop$type = "string" # this is a stop gap.  All properties **should have $type; see sheepdog_testing_suite issue #318
-    if ( !BioLockR::isReadableValue(prop$description) ) prop$description = "a property" # this is a stop gap.  All properties **should have $description
+    
+    # This was fixed on branch shinygui
+    # if ( !BioLockR::isReadableValue(prop$type) ) prop$type = "string" # this is a stop gap.  All properties **should have $type; see sheepdog_testing_suite issue #318
+    # if ( !BioLockR::isReadableValue(prop$description) ) prop$description = "a property" # this is a stop gap.  All properties **should have $description
     
     if ( !is.null(moduleId) && ownership=="general"){
         # showValue = ifelse(BioLockR::isReadableValue(value), value, "")
         # inputObj <- renderPrint(cat(paste(propName, "=", showValue)))
         inputObj <- uiOutput(propShowId(prop$property, moduleId))
-        message("UI is looking for an output called: ", propShowId(prop$property, moduleId))
+        # message("UI is looking for an output called: ", propShowId(prop$property, moduleId))
     }else if(prop$type == "boolean"){
         selected = ""
         if ( BioLockR::isReadableValue(value) ){
@@ -72,16 +74,43 @@ renderPropUi <- function(propName, prop, value, defaults, ownership="general", m
                               width = '100%')
     }
     
+    if (is.null(default) || is.na(default)){
+        firstLine <- em(prop$type)
+    }else {
+        content = "<b>source of default value</b>"
+        standardDefault = defaults$defaultPropsList$standard[propName]
+        content = c(content, paste("standard default:", ifelse(BioLockR::isReadableValue(standardDefault), standardDefault, "") ))
+        for (name in defaults$activeFiles){
+            val = " "
+            if (propName %in% names(defaults$defaultPropsList[[name]])){
+                val = defaults$defaultPropsList[[name]][propName]
+            }
+            content = c(content, paste0(name, ": ", val))
+        }
+        
+        # message("propName: ", propName)
+        # message("propInfoId(uiName) : ", propInfoId(uiName))
+        # message("content: ", paste0(content, collapse = "<br>"))
+        
+        firstLine <- tagList(
+            shinyBS::popify(
+                actionLink(propInfoId(uiName), "", icon = icon("angle-double-left")),
+                title=paste0("<b>", propName, " = ",  defaults$values[propName], "</b>"),
+                paste0(content, collapse = "<br>"),
+                trigger = c('hover','click'), placement='right'),
+            em(prop$type))
+    }
+    
     if (is.null(moduleId)){
         overridOpt <- tagList()
     }else {
         overrideProp = module_override_prop(prop$property, moduleId)
-        popContent = paste0("If the property \"", overrideProp, "\" is present, then its value will be used in place of the value of property \"", propName, "\" but ONLY this module instance.")
+        popContent = paste0("If the property \"", overrideProp, "\" is present, then its value will be used in place of the value of property \"", propName, "\" but ONLY for this module instance.")
         
         if (ownership=="override"){
             overridOpt <- tagList(
-                actionLink( propRmOverrideBtnId(prop$property, moduleId), "remove override"), 
-                paste0("to resume using: ", prop$property)
+                p(actionLink( propRmOverrideBtnId(prop$property, moduleId), "remove override"), 
+                paste0("to resume using: ", prop$property))
             )
         }else if (ownership=="general"){
             propCategory = unlist(strsplit(prop$property, split = ".", fixed = TRUE))[1]
@@ -102,36 +131,25 @@ renderPropUi <- function(propName, prop, value, defaults, ownership="general", m
     
     trailingUI = trailingUiFun()
     
-    if (is.null(default)){
-        propUI <- tagList(
-            em(prop$type),
-            renderText(prop$description),
-            inputObj,
-            overridOpt,
-            unlist(trailingUI))
-    }else{
-        content = "<b>source of default value</b>"
-        content = c(content, paste("standard default:", defaults$defaultPropsList$standard[propName]))
-        for (name in defaults$activeFiles){
-            val = " "
-            if (propName %in% names(defaults$defaultPropsList[[name]])){
-                val = defaults$defaultPropsList[[name]][propName]
-            }
-            content = c(content, paste0(name, ": ", val))
-        }
-        
-        propUI <- tagList(
+    
+    ### test
+    if (propName == "validation.stopPipeline"){
+        firstLine <- tagList(
             shinyBS::popify(
-                actionLink(propInfoId(uiName), "", icon = icon("angle-double-left")),
-                title=paste0("<b>", propName, " = ",  defaults$values[propName], "</b>"),
-                paste0(content, collapse = "<br>"),
+                actionLink("aVeryuniqueId", "", icon = icon("angle-double-left")),
+                title="title",
+                "content",
                 trigger = c('hover','click'), placement='right'),
-            em(prop$type),
-            renderText(prop$description),
-            inputObj,
-            overridOpt,
-            trailingUI)
+            em(prop$type))
     }
+    ###
+    
+    propUI <- tagList(
+        firstLine,
+        renderText(prop$description),
+        inputObj,
+        overridOpt,
+        trailingUI)
     
     return(propUI)
 }

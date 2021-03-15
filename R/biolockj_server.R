@@ -63,14 +63,21 @@ biolockj_server <- function(input, output, session){
                                  # Like moduleList, but these modules are in the "trash", not currently part of the pipeline.
                                  # names may not be maintained
                                  removedModules=vector("character"),
-                                 # named character vector of property values
-                                 customProps=vector("character"),
+                                 # named list of length=1 character vectors of property values
+                                 customProps=list(),
                                  ### IMPORTANT !
                                  # GET the property values through this object; the generalProps reactiveValues object
                                  # SET the property values through the input$[propName] object
                                  # an observeEvent ensures the flow of info from the input$ to the reactiveValues
                                  generalProps=initGenDefaults, 
                                  # Very much like generalProps, just changes as modules are added/removed
+                                 
+                                 # TODO:
+                                 # moduleProps should be a list (like custom props)
+                                 # override props should be written to moduleProps, not customProps.
+                                 # When a module is added; if any props in custom prop goes with that module, remove it from custom props (with notification)
+                                 # When a module is moved to the trash, it no longer appears in the properties tab, but the properties are still in the moduleProps list;
+                                 # When the trash is emptied, make a list of props that are owned by that module; remove them from moduleProps; then remove the module from the pipeline modules list so ownership is re-evaluated.
                                  moduleProps=vector("character")
         )
         
@@ -148,6 +155,18 @@ biolockj_server <- function(input, output, session){
             }else{
                 vector("character")
             }
+        })
+        
+        overrideProps <- eventReactive(pipelineModuleInfo(), {
+            # a character vector of the names of properties that are overrides for the current pipeline modules.
+            overrides = vector("character")
+            if ( BioLockR::hasReadableValue(pipelineModuleInfo())){
+                for (module in pipelineModuleInfo()){
+                    overrides = c(overrides, sapply(module$properties, function(prop){prop$override}))
+                }
+            }
+            message("current overrides: ", overrides)
+            overrides
         })
         
         #TODO: move to actions, or synchrony
@@ -406,8 +425,9 @@ biolockj_server <- function(input, output, session){
         # Properties - custom ####
         indexRmButtons = reactiveVal(0) # each time this ui is rendered, the buttons are all new buttons; otherwise, if you remove property "a", and later try to add it, you can't.
         output$showCustomProps <- renderUI({
-            if (length(values$customProps) > 0 ){
-                lapply(names(values$customProps), function(cp){
+            cPropsNames = setdiff(names(values$customProps), overrideProps())
+            if (length(cPropsNames) > 0 ){
+                lapply(cPropsNames, function(cp){
                     index=isolate(indexRmButtons()) + 1
                     indexRmButtons(index)
                     buttonId=paste0("REMOVE", propUiName(cp), index)
@@ -504,6 +524,11 @@ biolockj_server <- function(input, output, session){
                         props = thisModule$properties
                         message("This module has ", length(props), " properties.")
                         lastKeyPropName = Find(f=function(p){p$isKey}, x=thisModule$properties, right=TRUE)$property
+                        firstHeader = "Key Properties"
+                        if (!BioLockR::isReadableValue(lastKeyPropName)) {
+                            lastKeyPropName = ""
+                            firstHeader = "Properties"
+                        }
                         message("Determined the last key prop to be named: ", lastKeyPropName)
                         midBorderFun = function(){return(tagList( br(), br(), h3("Other Properties"), 
                                                                   em("General properties that apply to this module.  "),
@@ -523,14 +548,12 @@ biolockj_server <- function(input, output, session){
                                            br(), 
                                            #actionLink(paste0(moduleId, "changeId"), "change")  #TODO make this work
                                            ), 
-                                         h3("Key Properties"),
+                                         h3(firstHeader),
                                          lapply(props, function(prop){
                                              propName = prop$property
-                                             message("Module property for module: ", moduleId, "; property: ", prop$property)
-                                             message(prop$property, ": has type: ", prop$type)
                                              propUI <- tabsetPanel(
                                                  id=propModuleFlipPanel(propName, moduleId), type = "hidden",
-                                                 tabPanelBody("displayOnly", 
+                                                 tabPanelBody("nonOverrideUi", 
                                                               renderPropUi(prop$property,
                                                                            prop,
                                                                            isolate(values$generalProps[prop$property]),
@@ -540,10 +563,10 @@ biolockj_server <- function(input, output, session){
                                                                            trailingUiFun=ifelse(prop$property==lastKeyPropName, midBorderFun, standardBorderFun)
                                                               )
                                                  ),
-                                                 tabPanelBody("activeUi", 
+                                                 tabPanelBody("overrideUi", 
                                                               renderPropUi(prop$override,
                                                                            prop,
-                                                                           isolate(values$customProps[prop$override]),
+                                                                           isolate(values$customProps[[prop$override]]),
                                                                            isolate(defaults),
                                                                            ownership="override",
                                                                            moduleId = moduleId,
@@ -553,31 +576,40 @@ biolockj_server <- function(input, output, session){
                                              )
                                              
                                              
-                                             # propUI <- renderPropUi(propName,
-                                             #                        prop,
-                                             #                        isolate(values$customProps[propName]),
-                                             #                        isolate(defaults),
-                                             #                        ownership="override",
-                                             #                        trailingUiFun=ifelse(prop$property==lastKeyPropName, midBorderFun, standardBorderFun)
-                                             #                        )
                                              
                                              
-                                             # observeEvent(input[[propUiName(propName)]],{
-                                             #     values$generalProps[propName] <- input[[propUiName(propName)]]
-                                             #     req(input$checkLiveFeedback)
-                                             #     req(genPropInfo()[[propName]]$type != "boolean")
-                                             #     shinyFeedback::hideFeedback( propUiName(propName) )
-                                             #     req(input[[propUiName(propName)]] != "")
-                                             #     isGood = isolate(BioLockR::isValidProp(propName, input[[propUiName(propName)]]))
-                                             #     message("isGood: ", isGood)
-                                             #     if (is.na(isGood)){
-                                             #         shinyFeedback::hideFeedback( propUiName(propName) )
-                                             #     }else if(isGood){
-                                             #         shinyFeedback::showFeedbackSuccess( propUiName(propName) )
-                                             #     }else{
-                                             #         shinyFeedback::showFeedbackWarning( propUiName(propName), "not good" )
-                                             #     }
-                                             # })
+                       
+                                             regUiId = module_prop_UI_name(propName, moduleId)
+                                             observeEvent(input[[regUiId]],{
+                                                 values$modProps[propName] <- input[[regUiId]]
+                                                 
+                                                 
+                                                 # req(input$checkLiveFeedback)
+                                                 # req(prop$type != "boolean")
+                                                 # shinyFeedback::hideFeedback( regUiId )
+                                                 # req(input[[pregUiId]] != "")
+                                                 # moduleClass = isolate( classFromRunline(pipelineModuleInfo[[moduleId]]$usage) )
+                                                 # isGood = isolate(BioLockR::isValidProp(propName, input[[regUiId]]), module=moduleClass)
+                                                 # message("isGood: ", isGood)
+                                                 # if (is.na(isGood)){
+                                                 #     shinyFeedback::hideFeedback( regUiId )
+                                                 # }else if(isGood){
+                                                 #     shinyFeedback::showFeedbackSuccess( regUiId )
+                                                 # }else{
+                                                 #     shinyFeedback::showFeedbackWarning( regUiId, "not good" )
+                                                 # }
+                                             })
+                                             
+                                             overrideUiId = module_prop_UI_name(prop$override, moduleId)
+                                             observeEvent(input[[overrideUiId]],{
+                                                 if(BioLockR::isReadableValue(input[[overrideUiId]])){
+                                                     values$customProps[[prop$override]] <- input[[overrideUiId]]
+                                                 }
+                                             })
+
+                                             
+                                             
+                                             
                                              
                                              if (prop$ownership == "general"){
                                                  propCategory = unlist(strsplit(prop$property, split = ".", fixed = TRUE))[1]
@@ -601,18 +633,28 @@ biolockj_server <- function(input, output, session){
                                                      output[[propShowId(prop$property, moduleId)]] = u
                                                  })
                                              }
-                                             if (BioLockR::isReadableValue(isolate(values$customProps[prop$override]))){
-                                                 updateTabsetPanel(session=session, propModuleFlipPanel(propName, moduleId), selected = "activeUi")
+                                             # override flipper ####
+                                             if (BioLockR::isReadableValue(isolate(values$customProps[[prop$override]]))){
+                                                 updateTabsetPanel(session=session, propModuleFlipPanel(propName, moduleId), selected = "overrideUi")
                                              }
+                                             # observeEvent(values$customProps[prop$override], {
+                                             #     if (BioLockR::isReadableValue(isolate(values$customProps[prop$override]))){
+                                             #         updateTabsetPanel(session=session, propModuleFlipPanel(propName, moduleId), selected = "overrideUi")
+                                             #     }else{
+                                             #         updateTabsetPanel(session=session, propModuleFlipPanel(propName, moduleId), selected = "nonOverrideUi")
+                                             #     }
+                                             # })
                                              observeEvent(input[[propOverrideBtnId(propName, moduleId)]], {
                                                  message("The button was pushed! Button ", propOverrideBtnId(propName, moduleId))
-                                                 updateTabsetPanel(session=session, propModuleFlipPanel(propName, moduleId), selected = "activeUi")
+                                                 updateTabsetPanel(session=session, propModuleFlipPanel(propName, moduleId), selected = "overrideUi")
                                              })
                                              observeEvent(input[[propRmOverrideBtnId(propName, moduleId)]], {
                                                  message("The button was pushed! Button ", propRmOverrideBtnId(propName, moduleId))
-                                                 updateTabsetPanel(session=session, propModuleFlipPanel(propName, moduleId), selected = "displayOnly")
-                                                 values$customProps[prop$override] <- "" #TODO - see if NULL or NA or something different is better
+                                                 updateTabsetPanel(session=session, propModuleFlipPanel(propName, moduleId), selected = "nonOverrideUi")
+                                                 #values$customProps[prop$override] <- NA #TODO - see if NULL or NA or something different is better
+                                                 values$customProps[[prop$override]] <- NULL
                                              })
+                                             # /end override flipper
                                              propUI
                                          }),
                                          p("end")
@@ -1342,11 +1384,16 @@ biolockj_server <- function(input, output, session){
             if ( !is.na(values$defaultProps) && length(values$defaultProps) > 0 ){
                 lines = c(lines, "", writeConfigProp("pipeline.defaultProps", values$defaultProps, "list of file paths", projectDirPath(), input$checkRelPaths))
             }
-            if ( length(values$customProps) > 0 ){
+            if ( length(values$customProps) > 0 ){  #&& sum(!is.na(values$customProps)) > 0
                 lines = c(lines, "", "# Custom Properties")
                 for(cp in names(values$customProps)){
-                    line = writeConfigProp(cp, values$customProps[[cp]])
-                    lines = c(lines, line)
+                    #browser() #TODO - remove
+                    message("cp: ", cp)
+                    message("overrideProps: ", overrideProps())
+                    if ( ! (cp %in% overrideProps()) ){
+                        line = writeConfigProp(cp, values$customProps[[cp]])
+                        lines = c(lines, line)
+                    }
                 }
             }
             lines = c(lines, "", "# General Properties")
@@ -1370,6 +1417,8 @@ biolockj_server <- function(input, output, session){
                     }
                 }
             }
+            message("custom props: ", values$customProps)
+            # Module properties
             for (runline in values$moduleList){
                 al = aliasFromRunline(runline)
                 alsProps = pipelineModuleInfo()[[al]]$properties
@@ -1377,8 +1426,9 @@ biolockj_server <- function(input, output, session){
                     lines = c(lines, "", paste("#", al))
                     for (prop in alsProps){
                         p = prop$property
-                        if (BioLockR::isReadableValue(values$customProps[prop$override])){
-                            value = values$customProps[prop$override]
+                        if (BioLockR::hasReadableValue(values$customProps[[prop$override]])){
+                            p = prop$override
+                            value = values$customProps[[p]]
                             if ( doIncludeProp(p, value, default=defaults$values[p], input=input) ){
                                 line = writeConfigProp(p, value, prop$type, projectDirPath(), input$checkRelPaths)
                                 lines = c(lines, line)

@@ -12,6 +12,9 @@
 #'
 writeConfigProp <- function(propName, propVal=NULL, propType="string", projectDir="", useRelPath=FALSE){
     # message("Writting up the value for prop ", propName, " which is of type ", propType)
+    ## a stop gap, TODO - remove this
+    #if (!BioLockR::isReadableValue(propType)) propType = "string"
+    ##
     if ( is.null(propVal) || is.na(propVal) ){
         line = ""
     }else if(trimws(paste(propVal,collapse="")) == ""){
