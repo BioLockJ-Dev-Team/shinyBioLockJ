@@ -19,7 +19,7 @@ renderPropUi(
 
 \item{prop}{a property object, which is a list that contains type, description, etc}
 
-\item{value}{the current value}
+\item{value}{a string, the current value}
 
 \item{defaults}{the list of lists of representation of defaults}
 
@@ -39,4 +39,7 @@ Create the ui for an individual biolockj property.
 As of this writing, the Properties class in BioLockJ has these KNOWN_TYPES:
 KNOWN_TYPES = {STRING_TYPE, BOOLEAN_TYPE, FILE_PATH, EXE_PATH, LIST_TYPE, FILE_PATH_LIST, INTEGER_TYPE, NUMERTIC_TYPE};
 KNOWN_TYPES = {"string", "boolean", "file path", "executable", "list", "list of file paths", "integer", "numeric"};
+}
+\seealso{
+updateSharedPropUi
 }

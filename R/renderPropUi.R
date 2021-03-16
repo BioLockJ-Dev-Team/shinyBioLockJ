@@ -15,18 +15,22 @@
 #' @param ownership the ownership category for the proprety, one of c("general", "shared", "owned", "override")
 #' @param moduleId if ownership is not "general", which module is the ownership referenceing
 #' @param trailingUiFun a function that takes no args and returns a tagList object
+#' 
+#' @seealso updateSharedPropUi
 #'
 #' @return ui object list
 #' 
 # render general prop ui ####
-renderPropUi <- function(propName, prop, value="", defaults, ownership="general", moduleId=NULL, trailingUiFun=function(){tagList(hr())} ){
+renderPropUi <- function(propName, prop, value, defaults, ownership="general", moduleId=NULL, trailingUiFun=function(){tagList(hr())} ){
     # if (ownership=="override") message("Treating property ", propName, " as a ", prop$type, " property.")
     if (is.null(moduleId)){
         uiName = propUiName(propName)
     }else{
         uiName = module_prop_UI_name(propName, moduleId)
     }
+    
     default = defaults$values[propName]
+    # if (! BioLockR::isReadableValue(value)) value = default
     
     # This was fixed on branch shinygui
     # if ( !BioLockR::isReadableValue(prop$type) ) prop$type = "string" # this is a stop gap.  All properties **should have $type; see sheepdog_testing_suite issue #318
@@ -129,26 +133,20 @@ renderPropUi <- function(propName, prop, value="", defaults, ownership="general"
         }
     }
     
-    trailingUI = trailingUiFun()
-    
-    
-    ### test
-    if (propName == "validation.stopPipeline"){
-        firstLine <- tagList(
-            shinyBS::popify(
-                actionLink("aVeryuniqueId", "", icon = icon("angle-double-left")),
-                title="title",
-                "content",
-                trigger = c('hover','click'), placement='right'),
-            em(prop$type))
+    if (ownership=="shared"){
+        sharedNote <- p("shared with another module")
+    }else{
+        sharedNote <- ""
     }
-    ###
+    
+    trailingUI = trailingUiFun()
     
     propUI <- tagList(
         firstLine,
         renderText(prop$description),
         inputObj,
         overridOpt,
+        sharedNote,
         trailingUI)
     
     return(propUI)

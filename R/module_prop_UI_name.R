@@ -6,5 +6,5 @@
 #' @return a string to use for an associated UI element
 #'
 module_prop_UI_name <- function(propName, module){
-    paste(module, "_", propUiName(propName))
+    paste0(module, "HasProp", propUiName(propName))
 }

@@ -1,7 +1,7 @@
 #' Title
 #'
 #' @param modules list of module info, elements should be named, generally similar what is returned by BioLockR::moduleInfo(), elements must be named using their alias within the pipeline.
-#' @param sharedModuleProps a vector of properties that are used by more than one module (should not include general properties)
+#' @param sharedModuleProps a vector of properties that are used by more than one module (general properties are ignored)
 #' @param genPropInfo list of property info object, similar to what is returned by BioLockR::propInfo()
 #'
 #' @return 
