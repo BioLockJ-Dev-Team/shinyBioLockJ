@@ -23,11 +23,7 @@
 # render general prop ui ####
 renderPropUi <- function(propName, prop, value, defaults, ownership="general", moduleId=NULL, trailingUiFun=function(){tagList(hr())} ){
     # if (ownership=="override") message("Treating property ", propName, " as a ", prop$type, " property.")
-    if (is.null(moduleId)){
-        uiName = propUiName(propName)
-    }else{
-        uiName = module_prop_UI_name(propName, moduleId)
-    }
+    uiName = propUiName(propName, moduleId)
     
     default = defaults$values[propName]
     # if (! BioLockR::isReadableValue(value)) value = default
@@ -67,9 +63,9 @@ renderPropUi <- function(propName, prop, value, defaults, ownership="general", m
                                  step = 1,
                                  width = '40%')
     }else if(prop$type == "file path"){
-        inputObj <- buildFilePathPropUI(propName, value, default)
+        inputObj <- buildFilePathPropUI(propName, value, default, moduleId)
     }else if(prop$type == "list of file paths"){
-        inputObj <- buildFileListPropUI(propName, value, default)
+        inputObj <- buildFileListPropUI(propName, value, default, moduleId)
     }else {
         inputObj <- textInput(inputId = uiName,
                               label = propName,

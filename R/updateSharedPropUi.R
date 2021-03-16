@@ -1,5 +1,6 @@
 #' Update the values in the ui controls for shared properties
 #'
+#' @param session session=session
 #' @param prop the property object, must have a $type
 #' @param moduleId the module whose ui must be updated
 #' @param value the new value to apply
@@ -8,7 +9,7 @@
 #'
 updateSharedPropUi <- function(session, prop, moduleId, value){
     propName = prop$property
-    uiName = module_prop_UI_name(propName, moduleId)
+    uiName = propUiName(propName, moduleId)
     if(prop$type == "boolean"){
         updateRadioButtons(session, uiName, selected = value)
     }else if(prop$type == "numeric"){

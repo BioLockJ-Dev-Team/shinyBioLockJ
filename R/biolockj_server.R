@@ -1405,14 +1405,14 @@ biolockj_server <- function(input, output, session){
                         # message("exampleModuleClass: ", exampleModuleClass)
                         # exampleModule = allModuleInfo()[[exampleModuleClass]]
                         exampleModuleAlias = unlist(propUsedBy)[1]
-                        message("exampleModuleAlias: ", exampleModuleAlias)
+                        # message("exampleModuleAlias: ", exampleModuleAlias)
                         exampleModule = pipelineModuleInfo()[[exampleModuleAlias]]
                         #
-                        message("exampleModule: ", exampleModule)
+                        # message("exampleModule: ", exampleModule)
                         exampleOfProp = exampleModule$properties[[p]]
-                        message("exampleOfProp: ", exampleOfProp)
+                        # message("exampleOfProp: ", exampleOfProp)
                         type = exampleOfProp$type
-                        message("type: ", type)
+                        # message("type: ", type)
                         line = writeConfigProp(p, value, type, projectDirPath(), input$checkRelPaths)
                         lines = c(lines, line)
                     }
@@ -1436,6 +1436,12 @@ biolockj_server <- function(input, output, session){
                             # message("already wrote property: ", prop$property)
                         }else if(prop$ownership == "shared"){ #if(prop$property %in% sharedModuleProps())
                             # message("already wrote shared: ", prop$property)
+                            p = prop$property
+                            value = values$moduleProps[[p]]
+                            if ( doIncludeProp(p, value, default=defaults$values[p], input=input) ){
+                                line = writeConfigProp(p, value, prop$type, projectDirPath(), input$checkRelPaths)
+                                lines = c(lines, paste0("#shared: ", line))
+                            }
                         }else{
                             p = prop$property
                             value = values$moduleProps[[p]]

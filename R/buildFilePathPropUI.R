@@ -1,15 +1,16 @@
 #' Build UI for File Path Properties
 #'
 #' @describeIn buildFilePathPropUI Build the UI for a BioLockJ file property
-#' 
-#' @param propName a string, the name of the property
 #'
 #' @return ui object
 #'
-buildFilePathPropUI <- function(propName, value, default){
+buildFilePathPropUI <- function(propName, value, default, moduleId=NULL ){
     tagList(
-        textInput(propUiName(propName), propName, value=value, placeholder = default),
-        shinyFiles::shinyFilesButton(id=propFileChooserId(propName), "set file", title = "select a file", multiple = FALSE),
-        shinyFiles::shinyDirButton(id=propDirChooserId(propName), "set directory", title = "select a directory"),
+        textInput(propUiName(propName, moduleId), propName, 
+                  value=value, placeholder = default),
+        shinyFiles::shinyFilesButton(id=propFileChooserId(propName, moduleId), 
+                                     "set file", title = "select a file", multiple = FALSE),
+        shinyFiles::shinyDirButton(id=propDirChooserId(propName, moduleId), 
+                                   "set directory", title = "select a directory"),
     )
 }

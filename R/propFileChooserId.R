@@ -1,6 +1,6 @@
 #' 
 #' @describeIn propUiName name for a file chooser ui element
 #'
-propFileChooserId <- function(propName){
-    paste0(gsub(".", "", propName, fixed=TRUE), "FileChooser")
+propFileChooserId <- function(propName, moduleId=NULL){
+    paste0(propUiName(propName, moduleId), "FileChooser")
 }

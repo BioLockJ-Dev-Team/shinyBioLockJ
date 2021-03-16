@@ -18,7 +18,7 @@ buildFileListPropObservers(
   values
 )
 
-buildFileListPropUI(propName, value, default)
+buildFileListPropUI(propName, value, default, moduleId = NULL)
 
 buildFilePathPropObservers(
   session,
@@ -29,7 +29,7 @@ buildFilePathPropObservers(
   values
 )
 
-buildFilePathPropUI(propName, value, default)
+buildFilePathPropUI(propName, value, default, moduleId = NULL)
 }
 \arguments{
 \item{session}{usually session=session}
@@ -47,6 +47,8 @@ buildFilePathPropUI(propName, value, default)
 \item{value}{in the case of a list property, the value of the property, most likely a single string, possibly comma-separated list}
 
 \item{default}{value shown as a placeholder if no value is present, or value is removed}
+
+\item{moduleId}{the module id if the property ui is associated with a module.}
 }
 \value{
 

@@ -13,7 +13,7 @@ applyPropOwnership(
 \arguments{
 \item{modules}{list of module info, elements should be named, generally similar what is returned by BioLockR::moduleInfo(), elements must be named using their alias within the pipeline.}
 
-\item{sharedModuleProps}{a vector of properties that are used by more than one module (should not include general properties)}
+\item{sharedModuleProps}{a vector of properties that are used by more than one module (general properties are ignored)}
 
 \item{genPropInfo}{list of property info object, similar to what is returned by BioLockR::propInfo()}
 }

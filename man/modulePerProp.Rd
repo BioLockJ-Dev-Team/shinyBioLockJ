@@ -4,10 +4,12 @@
 \alias{modulePerProp}
 \title{Module Per Prop}
 \usage{
-modulePerProp(moduleInfo = BioLockR::moduleInfo())
+modulePerProp(moduleInfo = BioLockR::moduleInfo(), moduleClasses)
 }
 \arguments{
 \item{moduleInfo}{the lis returned by BioLockJ::moduleInfo(), or a similar object}
+
+\item{moduleClasses}{a named character vector with values that match the names of moduleInfo elements and names to be applied to them}
 }
 \value{
 a list of properties, each element is a vector of module names giving the modules that use that property

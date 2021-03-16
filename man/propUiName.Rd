@@ -18,11 +18,11 @@
 \usage{
 propClearBtn(propName)
 
-propDirChooserId(propName)
+propDirChooserId(propName, moduleId = NULL)
 
 propEditBtnId(propName, module)
 
-propFileChooserId(propName)
+propFileChooserId(propName, moduleId = NULL)
 
 propModuleFlipPanel(propName, module)
 
@@ -34,10 +34,12 @@ propSelectFromId(propName)
 
 propShowId(propName, module)
 
-propUiName(propName)
+propUiName(propName, moduleId = NULL)
 }
 \arguments{
 \item{propName}{the name of a BioLockJ property, such as "script.numThreads"}
+
+\item{moduleId}{the module id}
 
 \item{module}{the module alias}
 }

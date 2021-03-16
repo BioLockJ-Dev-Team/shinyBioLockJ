@@ -1,4 +1,6 @@
 #' Name UI elements for BioLockJ Properties
+#' 
+#' DEPRICATED - use propUiName(propName, module) instead
 #'
 #' @param propName the name of a BioLockJ property, such as "script.numThreads"
 #' @param module the module id
@@ -6,5 +8,5 @@
 #' @return a string to use for an associated UI element
 #'
 module_prop_UI_name <- function(propName, module){
-    paste0(module, "HasProp", propUiName(propName))
+    propUiName(propName, module)
 }

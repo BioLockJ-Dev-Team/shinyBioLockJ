@@ -4,9 +4,11 @@
 \alias{updateSharedPropUi}
 \title{Update the values in the ui controls for shared properties}
 \usage{
-updateSharedPropUi(session, propName, prop, moduleId, value)
+updateSharedPropUi(session, prop, moduleId, value)
 }
 \arguments{
+\item{session}{session=session}
+
 \item{prop}{the property object, must have a $type}
 
 \item{moduleId}{the module whose ui must be updated}

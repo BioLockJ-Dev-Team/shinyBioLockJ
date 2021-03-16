@@ -15,5 +15,5 @@ module_prop_UI_name(propName, module)
 a string to use for an associated UI element
 }
 \description{
-Name UI elements for BioLockJ Properties
+DEPRICATED - use propUiName(propName, module) instead
 }
