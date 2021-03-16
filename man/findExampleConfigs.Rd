@@ -10,10 +10,13 @@ findExampleConfigs(bljDir = dirname(dirname(BioLockR::get_BLJ_JAR())))
 \item{bljDir}{the BioLockJ directory, typically two levels up from BioLockJ.jar}
 }
 \value{
-
+named list of sets of example files.
 }
 \description{
 Look in the greater BioLockJ folder that contains the currently configured BioLockJ.jar file.
 Examples are expected to be under BioLockJ/templates/exampleProject/example.config,
 where "BioLockJ" is the path passed in as \emph{bljDir}.
+}
+\details{
+If there is any error in reaching the java program, the result is an empty string.
 }

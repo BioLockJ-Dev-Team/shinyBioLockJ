@@ -8,7 +8,7 @@
 #' @param projectDir the project directory (the folder where the config file lives), only used if _useRelPath=TRUE_
 #' @param useRelPath boolean, should file paths be written as relative to the projectDir
 #'
-#' @return
+#' @return a properly formatted line for a BioLockJ config file
 #'
 writeConfigProp <- function(propName, propVal=NULL, propType="string", projectDir="", useRelPath=FALSE){
     # message("Writting up the value for prop ", propName, " which is of type ", propType)

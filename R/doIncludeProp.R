@@ -7,7 +7,7 @@
 #' @param default the default property for the value (if any)
 #' @param input in general, input=input
 #'
-#' @return
+#' @return TRUE if the property should be included in the config file
 #' 
 doIncludeProp <- function(property, value, default=NULL, input){
     if (BioLockR::isReadableValue(value)){

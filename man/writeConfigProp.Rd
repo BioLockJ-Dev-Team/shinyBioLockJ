@@ -24,7 +24,7 @@ writeConfigProp(
 \item{useRelPath}{boolean, should file paths be written as relative to the projectDir}
 }
 \value{
-
+a properly formatted line for a BioLockJ config file
 }
 \description{
 Write a property in the format suitable for a BioLockJ property.

@@ -16,7 +16,7 @@ doIncludeProp(property, value, default = NULL, input)
 \item{input}{in general, input=input}
 }
 \value{
-
+TRUE if the property should be included in the config file
 }
 \description{
 Determine if a given property should be include in the config file.

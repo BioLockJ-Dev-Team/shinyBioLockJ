@@ -5,8 +5,10 @@
 #' where "BioLockJ" is the path passed in as _bljDir_.
 #'
 #' @param bljDir the BioLockJ directory, typically two levels up from BioLockJ.jar
+#' 
+#' @details If there is any error in reaching the java program, the result is an empty string.
 #'
-#' @return
+#' @return named list of sets of example files.
 #'
 findExampleConfigs <- function( bljDir = dirname(dirname(BioLockR::get_BLJ_JAR())) ){
     examples = tryCatch({
