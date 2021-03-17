@@ -11,6 +11,7 @@ getModuleRunLines <- function(moduleInfo){
     if (BioLockR::hasReadableValue(moduleInfo)){
         moduleRunLines = sapply(moduleInfo, function(mi){mi$usage})
         names(moduleRunLines) <- sapply(moduleInfo, function(mi){mi$title})
+        moduleRunLines = moduleRunLines[order(names(moduleRunLines))]
         return(moduleRunLines)
     }else{
         return(c())
