@@ -33,9 +33,9 @@ biolockj_ui <- function(){
                                           p(),
                                           checkboxInput("include_standard_defaults", "include values that match defaults"),
                                           checkboxInput("include_biolockj_version", "include BioLockJ version"),
+                                          shinyBS::tipify(checkboxInput("gather_shared_props", "gather shared properties"), "reduce dupliated lines when multiple modules use the same property", placement='right'),
                                           shinyBS::tipify(checkboxInput("include_mid_progress", "include work-in-progress"), "include commented list of modules in Trash and their properties, See Modules", placement='right'),
                                           shinyBS::tipify(shinyjs::disabled(checkboxInput("checkRelPaths", "write relative file paths")), "requires project root directory", placement='right'),
-                                          shinyBS::tipify(checkboxInput("gather_shared_props", "gather shared properties"), "reduce dupliated lines when multiple modules use the same property", placement='right'),
                                           #
                                           fluidRow(
                                               column(3, shinyFiles::shinyDirButton("projectRootDir", "Set Project Root Directory", "Select Project Root Directory")),

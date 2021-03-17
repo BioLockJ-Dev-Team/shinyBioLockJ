@@ -570,6 +570,21 @@ biolockj_server <- function(input, output, session){
                                                  }
                                              })
                                              
+                                             # shinyFiles backend ####
+                                             if( prop$type == "file path" ){
+                                                 buildFilePathPropObservers(session, input, output, prop$override, volumes, values, moduleId)
+                                                 if (prop$ownership != "general"){
+                                                     buildFilePathPropObservers(session, input, output, prop$property, volumes, values, moduleId) #myVolumes()
+                                                 }
+                                             }else if( prop$type == "list of file paths" ){
+                                                 buildFileListPropObservers(session, input, output, prop$override, volumes, values, moduleId)
+                                                 if (prop$ownership != "general"){
+                                                     buildFileListPropObservers(session, input, output, prop$property, volumes, values, moduleId) #myVolumes()
+                                                 }
+                                             }
+                                             
+                                             
+                                             # feedback ####
                                              observeEvent(input[[regUiId]],{
                                                  
                                                  # req(input$checkLiveFeedback)
@@ -592,13 +607,7 @@ biolockj_server <- function(input, output, session){
                                              if (BioLockR::isReadableValue(isolate(values$moduleProps[[prop$override]]))){
                                                  updateTabsetPanel(session=session, propModuleFlipPanel(propName, moduleId), selected = "overrideUi")
                                              }
-                                             # observeEvent(values$moduleProps[prop$override], {
-                                             #     if (BioLockR::isReadableValue(isolate(values$moduleProps[prop$override]))){
-                                             #         updateTabsetPanel(session=session, propModuleFlipPanel(propName, moduleId), selected = "overrideUi")
-                                             #     }else{
-                                             #         updateTabsetPanel(session=session, propModuleFlipPanel(propName, moduleId), selected = "nonOverrideUi")
-                                             #     }
-                                             # })
+                                             
                                              observeEvent(input[[propOverrideBtnId(propName, moduleId)]], {
                                                  message("The button was pushed! Button ", propOverrideBtnId(propName, moduleId))
                                                  updateTabsetPanel(session=session, propModuleFlipPanel(propName, moduleId), selected = "overrideUi")

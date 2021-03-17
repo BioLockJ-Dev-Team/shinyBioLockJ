@@ -15,7 +15,8 @@ buildFileListPropObservers(
   output,
   propName,
   myVolumesNow,
-  values
+  values,
+  moduleId = NULL
 )
 
 buildFileListPropUI(propName, value, default, moduleId = NULL)
@@ -26,7 +27,8 @@ buildFilePathPropObservers(
   output,
   propName,
   myVolumesNow,
-  values
+  values,
+  moduleId = NULL
 )
 
 buildFilePathPropUI(propName, value, default, moduleId = NULL)
@@ -44,11 +46,11 @@ buildFilePathPropUI(propName, value, default, moduleId = NULL)
 
 \item{values}{the list of lists reactive values object that represents the current configuration}
 
+\item{moduleId}{module id if property is associated with a module}
+
 \item{value}{in the case of a list property, the value of the property, most likely a single string, possibly comma-separated list}
 
 \item{default}{value shown as a placeholder if no value is present, or value is removed}
-
-\item{moduleId}{the module id if the property ui is associated with a module.}
 }
 \value{
 
