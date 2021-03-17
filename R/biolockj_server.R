@@ -531,7 +531,7 @@ biolockj_server <- function(input, output, session){
                                              
                        
                                              # main observers ####
-                                             regUiId = module_prop_UI_name(propName, moduleId)
+                                             regUiId = propUiName(propName, moduleId)
 
                                              message("property ", prop$property, " in module ", moduleId, " has ownership: ", prop$ownership)
                                              if (prop$ownership == "general"){
@@ -562,8 +562,8 @@ biolockj_server <- function(input, output, session){
                                                      message("Saw change in [", regUiId, "] need to update shared property")
                                                      sharedWith = setdiff(pipelineModsPerProp()[[propName]], moduleId)
                                                      for (otherModule in sharedWith){
-                                                         if (input[[module_prop_UI_name(propName, otherModule)]] != value){
-                                                             message("Updating so ui element [", module_prop_UI_name(propName, otherModule), "] now has value: ", value)
+                                                         if (input[[propUiName(propName, otherModule)]] != value){
+                                                             message("Updating so ui element [", propUiName(propName, otherModule), "] now has value: ", value)
                                                              updateSharedPropUi(session, prop, otherModule, value)
                                                          }
                                                      }
@@ -575,7 +575,7 @@ biolockj_server <- function(input, output, session){
                                                  })
                                              }
                                              
-                                             overrideUiId = module_prop_UI_name(prop$override, moduleId)
+                                             overrideUiId = propUiName(prop$override, moduleId)
                                              observeEvent(input[[overrideUiId]],{
                                                  if(BioLockR::isReadableValue(input[[overrideUiId]])){
                                                      values$moduleProps[[prop$override]] <- input[[overrideUiId]]

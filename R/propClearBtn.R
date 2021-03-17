@@ -3,6 +3,6 @@
 #' 
 #' @param propName the name of the property
 #'
-propClearBtn <- function(propName){
-    paste0(gsub(".", "", propName, fixed=TRUE), "ClearBtn")
+propClearBtn <- function(propName, moduleId = NULL){
+    paste0(propUiName(propName, moduleId = NULL), "ClearBtn")
 }

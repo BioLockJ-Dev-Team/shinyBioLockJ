@@ -88,13 +88,9 @@ renderPropUi <- function(propName, prop, value, defaults, ownership="general", m
             content = c(content, paste0(name, ": ", val))
         }
         
-        # message("propName: ", propName)
-        # message("propInfoId(uiName) : ", propInfoId(uiName))
-        # message("content: ", paste0(content, collapse = "<br>"))
-        
         firstLine <- tagList(
             shinyBS::popify(
-                actionLink(propInfoId(uiName), "", icon = icon("angle-double-left")),
+                actionLink(propInfoId(propName, moduleId), "", icon = icon("angle-double-left")),
                 title=paste0("<b>", propName, " = ",  defaults$values[propName], "</b>"),
                 paste0(content, collapse = "<br>"),
                 trigger = c('hover','click'), placement='right'),

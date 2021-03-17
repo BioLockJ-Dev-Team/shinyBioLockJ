@@ -1,9 +1,8 @@
-#' Title
 #'
-#' @param propUiName often the output of propUiName or module_prop_UI_name
+#' @describeIn propUiName the ui id for the info icon about defaults
 #'
 #' @return an id
 #'
-propInfoId <- function(propUiName){
-    paste0(propUiName, "Info")
+propInfoId <- function(propName, moduleId = NULL){
+    paste0(propUiName(propName, moduleId = NULL), "Info")
 }
