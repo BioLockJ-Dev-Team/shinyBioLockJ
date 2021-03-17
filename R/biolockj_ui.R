@@ -35,6 +35,7 @@ biolockj_ui <- function(){
                                           checkboxInput("include_biolockj_version", "include BioLockJ version"),
                                           shinyBS::tipify(checkboxInput("include_mid_progress", "include work-in-progress"), "include commented list of modules in Trash and their properties, See Modules", placement='right'),
                                           shinyBS::tipify(shinyjs::disabled(checkboxInput("checkRelPaths", "write relative file paths")), "requires project root directory", placement='right'),
+                                          shinyBS::tipify(checkboxInput("gather_shared_props", "gather shared properties"), "reduce dupliated lines when multiple modules use the same property", placement='right'),
                                           #
                                           fluidRow(
                                               column(3, shinyFiles::shinyDirButton("projectRootDir", "Set Project Root Directory", "Select Project Root Directory")),
@@ -47,9 +48,10 @@ biolockj_ui <- function(){
                                           p(),
                                           verbatimTextOutput("configText", placeholder = TRUE)),
                                  tabPanel("Load from file",
-                                          h2("Upoad an existing config file"),
-                                          em("(optional)"),
+                                          br(),
                                           p(em("When you pull values from an existing file, the values from the file will replace anything configured here.")),
+                                          h2("Upoad configuration"),
+                                          p("This uses the file, but not its location; thus relative file paths are not converted to absolute paths."),
                                           fileInput("uploadExistingConfig", label="Upload an existing config file", accept = c(".properties", ".config")),
                                           shinyjs::disabled(actionButton("populateUploadedConfig", "pull values")),
                                           hr(),
@@ -59,7 +61,8 @@ biolockj_ui <- function(){
                                               tabPanelBody("remote", "When run locally, there is also an option to find local files."),
                                               tabPanelBody("virtual", "When run locally, there is also an option to find local files."),
                                               tabPanelBody("local",
-                                                           h2("Load an existing config file"),
+                                                           h2("Local configuration"),
+                                                           p("This will use the file AND its location, allowing for conversion between relative and absolute paths."),
                                                            shinyFiles::shinyFilesButton("LocalExistingConfig", "Choose a local config file", "Please select a file", multiple = FALSE, viewtype = "list"),
                                                            p(),
                                                            verbatimTextOutput("showLocalFile", placeholder=TRUE),
@@ -67,7 +70,10 @@ biolockj_ui <- function(){
                                               )
                                           ),
                                           hr(),
-                                          uiOutput("examples")
+                                          h2("Example configuration"),
+                                          p("This will use the read-only example project directory to reference relative files."),
+                                          uiOutput("examples"),
+                                          actionButton("populateExampleConfig", "pull values")
                                  )
                      )
             ),

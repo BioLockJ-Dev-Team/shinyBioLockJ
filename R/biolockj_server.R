@@ -71,14 +71,6 @@ biolockj_server <- function(input, output, session){
                                  # an observeEvent ensures the flow of info from the input$ to the reactiveValues
                                  generalProps=initGenDefaults, 
                                  # a named list, each element a length=1 character vector
-                                 
-                                 # TODO:
-                                 # done--moduleProps should be a list (like custom props)
-                                 # done--override props should be written to moduleProps, not customProps.
-                                 # done--When a module is added; if any props in custom prop goes with that module, remove it from custom props (with notification)
-                                 # (no action) When a module is moved to the trash, it no longer appears in the properties tab, but the properties are still in the moduleProps list;
-                                 # done--When the trash is emptied, make a list of props that are owned by that module; remove them from moduleProps; then remove the module from the pipeline modules list so ownership is re-evaluated.
-                                 # done--eval if overrideProps object is still needed (its not)
                                  moduleProps=list()
         )
         
@@ -211,16 +203,15 @@ biolockj_server <- function(input, output, session){
             cat(paste0(configLines(), collapse = "\n"))
         })
         
+        exampleConfigs <- eventReactive( jarFilePath(), findExampleConfigs())
+        
         output$examples <- renderUI({
-            examples = findExampleConfigs()
+            examples = exampleConfigs()
             select = "BioLockJ/templates/myFirstPipeline/myFirstPipeline.config"
             if (examples=="") select = ""
-            tagList(
-                h2("Pull from an example config file"),
-                selectInput("selectExample", "Select an example", choices = examples, 
-                            selected=select),
-                actionButton("populateExampleConfig", "pull values")
-            )
+            selectInput("selectExample", "Select an example", 
+                        choices = examples, 
+                        selected=select)
         })
         
         # Defaults ####
@@ -525,11 +516,7 @@ biolockj_server <- function(input, output, session){
                                                               )
                                                  )
                                              )
-                                             
-                                             
-                                             
-                                             
-                       
+                                         
                                              # main observers ####
                                              regUiId = propUiName(propName, moduleId)
 
@@ -559,11 +546,11 @@ biolockj_server <- function(input, output, session){
                                                  observeEvent(input[[regUiId]], {
                                                      values$moduleProps[[propName]] = input[[regUiId]]
                                                      value = values$moduleProps[[propName]]
-                                                     message("Saw change in [", regUiId, "] need to update shared property")
+                                                     # message("Saw change in [", regUiId, "] need to update shared property")
                                                      sharedWith = setdiff(pipelineModsPerProp()[[propName]], moduleId)
                                                      for (otherModule in sharedWith){
                                                          if (input[[propUiName(propName, otherModule)]] != value){
-                                                             message("Updating so ui element [", propUiName(propName, otherModule), "] now has value: ", value)
+                                                             # message("Updating so ui element [", propUiName(propName, otherModule), "] now has value: ", value)
                                                              updateSharedPropUi(session, prop, otherModule, value)
                                                          }
                                                      }
@@ -637,7 +624,7 @@ biolockj_server <- function(input, output, session){
                     result = do.call(tabsetPanel, argsList)
                 }, message = "Rendering module properties...")
             }else{
-                result="No modules."
+                result=h4("No modules.")
             }
             result
         })
@@ -1394,7 +1381,7 @@ biolockj_server <- function(input, output, session){
                     }
                 }
             }
-            if ( length(sharedModuleProps() > 0) && BioLockR::hasReadableValue(unlist(values$moduleProps[sharedModuleProps()])) ){
+            if ( input$gather_shared_props && length(sharedModuleProps() > 0) && BioLockR::hasReadableValue(unlist(values$moduleProps[sharedModuleProps()])) ){
                 lines = c(lines, "", "# Shared module properties")
                 for( p in sharedModuleProps() ){
                     value = values$moduleProps[[p]]
@@ -1432,16 +1419,10 @@ biolockj_server <- function(input, output, session){
                                 line = writeConfigProp(p, value, prop$type, projectDirPath(), input$checkRelPaths)
                                 lines = c(lines, line)
                             }
-                        }else if(prop$ownership == "general"){ #if(prop$property %in% names(values$generalProps))
+                        }else if(prop$ownership == "general"){ 
                             # message("already wrote property: ", prop$property)
-                        }else if(prop$ownership == "shared"){ #if(prop$property %in% sharedModuleProps())
+                        }else if(prop$ownership == "shared" && input$gather_shared_props){
                             # message("already wrote shared: ", prop$property)
-                            p = prop$property
-                            value = values$moduleProps[[p]]
-                            if ( doIncludeProp(p, value, default=defaults$values[p], input=input) ){
-                                line = writeConfigProp(p, value, prop$type, projectDirPath(), input$checkRelPaths)
-                                lines = c(lines, paste0("#shared: ", line))
-                            }
                         }else{
                             p = prop$property
                             value = values$moduleProps[[p]]
