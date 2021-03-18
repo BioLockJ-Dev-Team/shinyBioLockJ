@@ -63,15 +63,15 @@ biolockj_server <- function(input, output, session){
                                  # Like moduleList, but these modules are in the "trash", not currently part of the pipeline.
                                  # names may not be maintained
                                  removedModules=vector("character"),
-                                 # named list of length=1 character vectors of property values
-                                 customProps=list(),
                                  ### IMPORTANT !
                                  # GET the property values through this object; the generalProps reactiveValues object
                                  # SET the property values through the input$[propName] object
                                  # an observeEvent ensures the flow of info from the input$ to the reactiveValues
                                  generalProps=initGenDefaults, 
                                  # a named list, each element a length=1 character vector
-                                 moduleProps=list()
+                                 moduleProps=list(),
+                                 # named list of length=1 character vectors of property values
+                                 customProps=list()
         )
         
         defaults <- reactiveValues(
@@ -106,6 +106,10 @@ biolockj_server <- function(input, output, session){
         bljVer <- reactiveVal(initbljVer)
         
         allModuleInfo <- reactiveVal(initmoduleInfo)
+        
+        genPropInfo <- reactiveVal(initpropInfo)
+        
+        # Event Reactives around core ####
         
         moduleRunLines <- eventReactive(allModuleInfo(), {
             # map module short name to run line syntax
@@ -152,8 +156,15 @@ biolockj_server <- function(input, output, session){
                 vector("character")
             }
         })
-
-        genPropInfo <- reactiveVal(initpropInfo)
+        
+        pipelineModuleProps <- eventReactive(pipelineModuleInfo(), {
+            names = unlist(sapply(pipelineModuleInfo(), function(module){
+                unlist(sapply(module$properties, function(prop){
+                    c(prop$property, prop$override)
+                }))
+            }))
+            names = unique(names[order(names)])
+        })
         
         filePathProps <- eventReactive(genPropInfo(), {
             propsInfoForType(genPropInfo(), "file path")
@@ -1279,8 +1290,8 @@ biolockj_server <- function(input, output, session){
                             # all props, if NOT rendered, go this way
                             values$generalProps[propName] <- vals[propName]
                         }
-                    }else if( propName %in% names(values$moduleProps) ){
-                        # TODO: fill this in
+                    }else if( propName %in% pipelineModuleProps() ){
+                        values$moduleProps[[propName]] <- vals[propName]
                     }else{
                         values$customProps[[propName]] <- vals[propName]
                     }
