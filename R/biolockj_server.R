@@ -375,7 +375,7 @@ biolockj_server <- function(input, output, session){
         indexRmButtons = reactiveVal(0) # each time this ui is rendered, the buttons are all new buttons; otherwise, if you remove property "a", and later try to add it, you can't.
         output$showCustomProps <- renderUI({
             if (length(values$customProps) > 0 ){
-                lapply(values$customProps, function(cp){
+                lapply(names(values$customProps), function(cp){
                     index=isolate(indexRmButtons()) + 1
                     indexRmButtons(index)
                     buttonId=paste0("REMOVE", propUiName(cp), index)

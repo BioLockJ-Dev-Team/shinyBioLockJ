@@ -7,9 +7,12 @@
 #'
 #' @return a list of properties, each element is a vector of module names giving the modules that use that property
 #'
-modulePerProp <- function(moduleInfo=BioLockR::moduleInfo(), moduleClasses){
+modulePerProp <- function(moduleInfo=BioLockR::moduleInfo(), moduleClasses=NULL){
     if ( !BioLockR::hasReadableValue(moduleInfo) ) return( list() )
-    if ( !BioLockR::hasReadableValue(moduleClasses) ) return( list() )
+    if( is.null(moduleClasses)){
+        moduleClasses = names(moduleInfo)
+        names(moduleClasses) = moduleClasses
+    }else if ( !BioLockR::hasReadableValue(moduleClasses) ) return( list() )
     useModuleInfo = moduleInfo[moduleClasses]
     names(useModuleInfo) = names(moduleClasses)
     a = lapply(useModuleInfo, function(mi){names(mi$properties)})
