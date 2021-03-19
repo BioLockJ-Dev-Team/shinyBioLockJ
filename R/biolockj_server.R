@@ -329,7 +329,12 @@ biolockj_server <- function(input, output, session){
                                      req(genPropInfo()[[propName]]$type != "boolean")
                                      shinyFeedback::hideFeedback( propUiName(propName) )
                                      req(input[[propUiName(propName)]] != "")
-                                     isGood = isolate(BioLockR::isValidProp(propName, input[[propUiName(propName)]]))
+                                     if (genPropInfo()[[propName]]$type=="file path" || genPropInfo()[[propName]]$type=="list of file paths"){
+                                         absPaths = writeFilePathList(input[[propUiName(propName)]], projectDir = projectDirPath(), useRelPath = FALSE)
+                                         isGood = isolate(BioLockR::isValidProp(propName, absPaths))
+                                     }else{
+                                         isGood = isolate(BioLockR::isValidProp(propName, input[[propUiName(propName)]]))
+                                     }
                                      message("isGood: ", isGood)
                                      if (is.na(isGood)){
                                          shinyFeedback::hideFeedback( propUiName(propName) )
