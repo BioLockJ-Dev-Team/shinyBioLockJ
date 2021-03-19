@@ -10,6 +10,8 @@
 # pkgload::load_all(".")
 for (file in dir("R)")) source(file)
 
+library("shinyBS")
+
 # shiny_biolockj()
 ui = biolockj_ui()
 server <- biolockj_server(input, output, session)
