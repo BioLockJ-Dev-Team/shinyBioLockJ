@@ -90,7 +90,9 @@ biolockj_ui <- function(){
                                                  width = '100%')),
                              column(2, actionButton("AddModuleButton", style = "margin-top: 20px;", "add to pipeline", class = "btn-success"))),
                          uiOutput("manageModules"),
-                         actionButton("emptyModuleTrash", "Empty Trash"))),
+                         actionButton("emptyModuleTrash", "Empty Trash"),
+                         hr(),
+                         uiOutput("moduleSummary"))),
             # Properties ####
             tabPanel("Properties",
                      div(style="", splitLayout(

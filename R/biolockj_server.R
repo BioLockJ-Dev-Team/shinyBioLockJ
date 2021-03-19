@@ -293,6 +293,18 @@ biolockj_server <- function(input, output, session){
                 orientation="vertical")
         })
         
+        output$moduleSummary <- renderUI({
+            selMod = classFromRunline( moduleRunLines()[input$AddBioModule] )
+            tagList(
+                h3(input$AddBioModule),
+                strong(markdownTextToHTML(allModuleInfo()[[selMod]]$description)),
+                p(a("user guide", href=module_userguide_url(selMod))),
+                p("class: ", selMod),
+                h5("Details"),
+                markdownTextToHTML(allModuleInfo()[[selMod]]$details)
+            )
+        })
+        
         
         # Properties - backbone ####
         output$genProps <- renderUI({
