@@ -614,21 +614,47 @@ biolockj_server <- function(input, output, session){
                                              
                                              # feedback ####
                                              observeEvent(input[[regUiId]],{
-                                                 
-                                                 # req(input$checkLiveFeedback)
-                                                 # req(prop$type != "boolean")
-                                                 # shinyFeedback::hideFeedback( regUiId )
-                                                 # req(input[[pregUiId]] != "")
-                                                 # moduleClass = isolate( classFromRunline(pipelineModuleInfo[[moduleId]]$usage) )
-                                                 # isGood = isolate(BioLockR::isValidProp(propName, input[[regUiId]]), module=moduleClass)
-                                                 # message("isGood: ", isGood)
-                                                 # if (is.na(isGood)){
-                                                 #     shinyFeedback::hideFeedback( regUiId )
-                                                 # }else if(isGood){
-                                                 #     shinyFeedback::showFeedbackSuccess( regUiId )
-                                                 # }else{
-                                                 #     shinyFeedback::showFeedbackWarning( regUiId, "not good" )
-                                                 # }
+                                                 req(input$checkLiveFeedback)
+                                                 req(prop$type != "boolean")
+                                                 shinyFeedback::hideFeedback( regUiId )
+                                                 req(input[[regUiId]] != "")
+                                                 moduleClass = isolate( classFromRunline(thisModule$usage) )
+                                                 if (prop$type=="file path" || prop$type=="list of file paths"){
+                                                     absPaths = writeFilePathList(input[[regUiId]], projectDir = projectDirPath(), useRelPath = FALSE)
+                                                     isGood = isolate(BioLockR::isValidProp(propName, absPaths, module = moduleClass))
+                                                 }else{
+                                                     isGood = isolate(BioLockR::isValidProp(propName, input[[regUiId]], module = moduleClass))
+                                                 }
+                                                 message("isGood: ", isGood)
+                                                 if (is.na(isGood)){
+                                                     shinyFeedback::hideFeedback( regUiId )
+                                                 }else if(isGood){
+                                                     shinyFeedback::showFeedbackSuccess( regUiId )
+                                                 }else{
+                                                     shinyFeedback::showFeedbackWarning( regUiId, "not good" )
+                                                 }
+                                             })
+                                             
+                                             observeEvent(input[[overrideUiId]],{
+                                                 req(input$checkLiveFeedback)
+                                                 req(prop$type != "boolean")
+                                                 shinyFeedback::hideFeedback( overrideUiId )
+                                                 req(input[[overrideUiId]] != "")
+                                                 moduleClass = isolate( classFromRunline(thisModule$usage) )
+                                                 if (prop$type=="file path" || prop$type=="list of file paths"){
+                                                     absPaths = writeFilePathList(input[[overrideUiId]], projectDir = projectDirPath(), useRelPath = FALSE)
+                                                     isGood = isolate(BioLockR::isValidProp(propName, absPaths, module = moduleClass))
+                                                 }else{
+                                                     isGood = isolate(BioLockR::isValidProp(propName, input[[overrideUiId]], module = moduleClass))
+                                                 }
+                                                 message("isGood: ", isGood)
+                                                 if (is.na(isGood)){
+                                                     shinyFeedback::hideFeedback( overrideUiId )
+                                                 }else if(isGood){
+                                                     shinyFeedback::showFeedbackSuccess( overrideUiId )
+                                                 }else{
+                                                     shinyFeedback::showFeedbackWarning( overrideUiId, "not good" )
+                                                 }
                                              })
                                              
                                              # override flipper ####
