@@ -7,7 +7,8 @@
 #' @return html
 #' 
 markdownTextToHTML <- function(text){
-html <- markdown::markdownToHTML(text=text, fragment.only = TRUE)
-Encoding(html) <- "UTF-8"
-return(HTML(html))
+    if ( !BioLockR::hasReadableValue(text)) text = ""
+    html <- markdown::markdownToHTML(text=text, fragment.only = TRUE)
+    Encoding(html) <- "UTF-8"
+    return(HTML(html))
 }
