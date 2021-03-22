@@ -30,7 +30,7 @@ In the interactive set up, enter the path where you saved the BioLockJ folder an
 
 In an **R session**:
 ```R
-devtools::install_github("IvoryC/shinyBioLockJ")
+devtools::install_github("BioLockJ-Dev-Team/shinyBioLockJ")
 shinyBioLockJ::shiny_biolockj()
 ```
 
