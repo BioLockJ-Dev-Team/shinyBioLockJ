@@ -7,30 +7,51 @@ A GUI for BioLockJ implemented in R shiny
 ## Getting Started
 
 #### BioLockJ
-Make sure you have BioLockJ, see [BioLockJ - Getting Started](https://biolockj-dev-team.github.io/BioLockJ/Getting-Started/).
+Make sure you have BioLockJ, **version v1.3.17** or later. 
 
-In a **terminal or command line** session, take sure you have values for the following variables:
+In a **terminal** or **command line** session:
+
 ```bash
 echo $BLJ
 echo $BLJ_PROJ
+biolockj --version
+# requires version v1.3.17 or later
 ```
 
-#### BioLockR
-Make sure you have the R pakcage _BioLockR_.  See [BioLockR](https://biolockj-dev-team.github.io/BioLockR) for details.  
+To install or update BioLockJ, see [BioLockJ - Getting Started](https://biolockj-dev-team.github.io/BioLockJ/Getting-Started/).
 
-In short, in an **R session**:
-```R
-# install.packages("devtools")
+#### Install shinyBioLockJ and BioLockR
+
+shinyBioLockJ requires the R package _BioLockR_.  See [BioLockR](https://biolockj-dev-team.github.io/BioLockR) for details.  
+
+Start an R session, and make sure you have have devtools package.
+```
+R
+install.packages("devtools")
+```
+
+In the R session, use devtools to install BioLockR and shinyBioLockJ from github.
+```
 devtools::install_github("BioLockJ-Dev-Team/BioLockR")
-BioLockR::setup_BioLockR() # launches interactive setup
+devtools::install_github("BioLockJ-Dev-Team/shinyBioLockJ")
 ```
-In the interactive set up, enter the path where you saved the BioLockJ folder and the path to your BLJ_PROJ folder.
 
-#### shiny BioLockJ
+Note that the R session is still active, which is best for the next step. 
+
+#### Link BioLockR to BioLockJ
+
+In the interactive set up, enter the path where you saved the BioLockJ folder and the path to your BLJ_PROJ folder. **Rstudio is NOT recommended for this step.** Once these are set up, BioLockR will remember them even when used from Rstudio.
 
 In an **R session**:
-```R
-devtools::install_github("BioLockJ-Dev-Team/shinyBioLockJ")
+```
+BioLockR::setup_BioLockR()
+```
+Note that the R session is still active, which is best for the next step.
+
+#### Launch shinyBioLockJ
+
+In an **R session**:
+```
 shinyBioLockJ::shiny_biolockj()
 ```
 
@@ -45,3 +66,5 @@ This will open the app in your web browser.
 This will open the app in an RStudio window.
 
 The app may appear differently when hosted on a remote server, but either method of locally launching it should produce the same result.
+
+The command to exit an R session (without saving it) is: `quit("no")`
