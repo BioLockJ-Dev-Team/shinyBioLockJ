@@ -11,7 +11,8 @@
 #  Any line that matches: "# * #### *" can be used to 'fold' the code.
 #
 biolockj_server <- function(input, output, session){
-    
+    shiny::addResourcePath("sbs", system.file("www", package="shinyBS"))
+
     envType = detect_deployment()
     
     

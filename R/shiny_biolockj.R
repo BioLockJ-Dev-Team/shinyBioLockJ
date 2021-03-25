@@ -11,15 +11,10 @@
 #' @export
 #' 
 shiny_biolockj <- function(...) {
-
-    ui = biolockj_ui()
-    
-    server <- biolockj_server(input, output, session)
-    
     # Run the application ####
     # Supress Shiny's auto-load behaviour
     old <- options(shiny.autoload.r = FALSE)
     on.exit(options(old), add = TRUE)  
     
-    shinyApp(ui, server, ...)
+    shinyApp(biolockj_ui(), biolockj_server(input, output, session), ...)
 }
