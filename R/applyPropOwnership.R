@@ -9,7 +9,6 @@
 #' override is the module-specific override property for this this module and property and 
 #' ownership is one of "general", "shared", or "single"
 #'
-#' @examples
 applyPropOwnership <- function( modules, sharedModuleProps, genPropInfo=BioLockR::propInfo()){
     new = lapply(names(modules), function(alias){
         mod = modules[[alias]]

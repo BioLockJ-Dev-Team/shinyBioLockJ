@@ -4,7 +4,7 @@
 \alias{modulePerProp}
 \title{Module Per Prop}
 \usage{
-modulePerProp(moduleInfo = BioLockR::moduleInfo(), moduleClasses)
+modulePerProp(moduleInfo = BioLockR::moduleInfo(), moduleClasses = NULL)
 }
 \arguments{
 \item{moduleInfo}{the lis returned by BioLockJ::moduleInfo(), or a similar object}

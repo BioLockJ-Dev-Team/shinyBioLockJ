@@ -4,6 +4,8 @@
 #' @param feedbackId the input object to apply the feedback onto (by default, feedbackId=inputId)
 #' @param moduleClass the class name of an associated module, used for the module arg to BioLockR::isValidProp
 #' @param input generally use: input=input
+#' @param prop a property object, such as an element of the list returned by BioLockR::propInfo()
+#' @param projPath use projectDirPath(); the path that relative paths are relative to.
 #'
 applyShinyFeedback <- function(inputId, prop, feedbackId=inputId, moduleClass=NULL, projPath=projectDirPath(), input){
     observeEvent(input[[inputId]],{
