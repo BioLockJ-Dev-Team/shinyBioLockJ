@@ -1,0 +1,64 @@
+---
+title: "Notes for Developers"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{developers}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(shinyBioLockJ)
+```
+
+# Contribution workflow
+
+This project uses forking and branching the same way that the BioLockJ main project repository does. To contribute, fork the project and make your contirbutions on a branch; submit a pull request to the main repo main branch from your development branch.
+
+# Style
+
+Please continue to the the code folding in the server function and ui function. Anything that can be pulled out into a function with its own file should be; and the corresponding test and documentation should be made for it. (This is very easy with `use_r("foo")` and `use_test()`, _command+alt+shif+R_ to add Roxygen comments.)
+
+# Deployment
+
+Ideally, the user is launching this app from the same environment used to run pipelines, and the version / location / mode of BioLockJ that powers their pipelines is what is powering the app.  The app is designed to work from local host, form a docker container, or from a remote server (such as shinyapp.io). When making changes, please consider how this might affect the apps performance in different deployments.
+
+# Underlying Model
+
+A pipeline config file has two things: modules and properties.  
+These are stored in the `values` object.
+
+The app, additionally has a few things that define the state of the app: property defaults, all general properties and their info, all available modules and their info.  These last two (module and property info) come from BioLockJ.  The app relies on the BioLockR package and its persisted settings to store the current version/location of BioLockJ, and the app updates the moduleInfo and propInfo objects from BioLockJ.  Defaults are a little more involved.  The configuration includes the property `pipeline.defaultProps` and its value; but thats as far as the configuration takes it, it does not actually include any of the values from any file listed in this value.  The app does.  It uses these defaults to determine if a value has been changed and should be included in the file, an initial value to give each property and the placeholder text to use for each text property. Everything about default values, the actual values and the chain of files that store them, is all stored in the `defaults` object.
+
+## The values object
+
+Everything for the current state of a configuration is stored in the `values` object.  The comments in the values object are the authoritative source about its structure.  
+
+The `values$moduleList` object stores the module run order: an ordered list of modules that defines the pipeline.
+
+The `values$removedModules` object stores modules that were removed.  They are NOT part of the pipeline, and truely are not part of the configuration but they are still part of the app.  Alias's used by removed modules are still considered taken.  Properties used by removed modules are still set. As far as the backend is concerned, they are still part of the configuration; but they are not actually included when writing the config file (which is what really matters).
+
+The `defaultProps` object holds the values for one property: the `pipeline.defaultProps` property.  All other properties are stored dynamically as list elements. This does not actually control what defaults are shown in the app; and the app tries to warn the user when `values$defaultProps` is different from `defaults$activeFiles`.
+
+All properties (with the exception of defaultProps) are stored across three lists: `values$generalProps`, `values$moduleProps`, and `values$customProps`.  General properties are defined based on `BioLockR::propInfo()`.  Any property whose name is in that list is considered a general property.  The UI for it is created even before any modules are added; and the ui is part of the General Props section. When the UI is generated for a module that uses that property, the modules UI is just text referencing the general property.  Any property that is named in a module's properties section, and that is NOT a genral property, is considered a module.  Also any property (module or general) in a module-specific-override form.  The list of general properties is set once the BioLockJ jar is set. The list of module properties may change as modules are added/removed and different aliases are used.  When a property is read from a file, if it is not a general property, and not a module property (and not a module-specific-override), then it is a handled as a custom prop, and stored in `values$customProps`.  This might include, user typos, or key/value pairs that users made up, or module properties that belong to modules that are not currently part of the pipeline.  Because of this last case, each time a module is added to a pipeline, the app checks its properties (including overrides) agaist the custom properties so the module can "claim" its properties out of the custom props list.
+
+## The defaults object
+
+Everything to do with the defaultProps files, and the default values of properties are handled in the defaults object. The comments in the defaults object are the authoritative source about its structure.  
+
+`defaults$values` is what most of the rest of the app references.
+
+Any file that is uploaded as a default props file, or selected from local files, is read and its properties are stored in the `defaults$defaultPropsList` object while the file location is stored in the `defaults$uploadedFiles` object.
+
+`defaults$defaultPropsChain` stores the relationship between default props files (they can chain together).
+
+`defaults$activeFiles` includes any file listed in `values$defaultProps` and any default props file that those link to.
+
+All of the values from all of the `defaults$activeFiles` files, applied in the correct order, produced `defaults$values`.
