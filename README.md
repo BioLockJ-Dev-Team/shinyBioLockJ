@@ -22,7 +22,7 @@ To install or update BioLockJ, see [BioLockJ - Getting Started](https://biolockj
 
 #### Install shinyBioLockJ and BioLockR
 
-shinyBioLockJ requires the R package _BioLockR_.  See [BioLockR](https://biolockj-dev-team.github.io/BioLockR) for details.  
+shinyBioLockJ requires the R package _BioLockR_.  See [BioLockR](https://github.com/BioLockJ-Dev-Team/BioLockR) for details.  
 
 Start an R session, and make sure you have have devtools package.
 ```
