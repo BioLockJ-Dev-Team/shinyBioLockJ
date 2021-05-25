@@ -1235,7 +1235,7 @@ biolockj_server <- function(input, output, session){
                                                                p("Correct the setting for BLJ_JAR.")),
                                                    type = "error", 
                                                    duration=0, 
-                                                   closeButton = FALSE)
+                                                   closeButton = TRUE)
                                   updateTabsetPanel(session=session, inputId="topTabs", selected = "Settings")
                               }else{
                                   removeNotification(id=id) 
