@@ -324,6 +324,9 @@ biolockj_server <- function(input, output, session){
                                                         genPropInfo()[[propName]], 
                                                         isolate(values$generalProps[propName]),
                                                         isolate(defaults))
+                                 observeEvent(input[[propUiName(propName)]],{
+                                     values$generalProps[propName] <- input[[propUiName(propName)]]
+                                 })
                                  applyShinyFeedback(inputId=propUiName(propName), 
                                                     prop=genPropInfo()[[propName]], 
                                                     projPath=projectDirPath(),
